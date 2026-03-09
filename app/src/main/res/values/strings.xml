@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Countries Explorer</string>
+    <string name="search_hint">Поиск стран...</string>
+    <string name="favorites">Избранное</string>
+    <string name="countries_list">Список стран</string>
+    <string name="loading">Загрузка...</string>
+    <string name="error_occurred">Произошла ошибка</string>
+    <string name="retry">Повторить</string>
+    <string name="no_countries_found">Страны не найдены</string>
+    <string name="no_favorites">Нет избранных стран</string>
+    <string name="capital">Столица</string>
+    <string name="population">Население</string>
+    <string name="area">Площадь</string>
+    <string name="region">Регион</string>
+    <string name="subregion">Подрегион</string>
+    <string name="languages">Языки</string>
+    <string name="currencies">Валюты</string>
+    <string name="timezones">Часовые пояса</string>
+    <string name="borders">Граничит с</string>
+    <string name="refresh">Обновить</string>
+</resources>
