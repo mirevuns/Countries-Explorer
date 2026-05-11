@@ -1,7 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Homework 3: Countries Explorer -->
 <resources>
     <string name="app_name">Countries Explorer</string>
     <string name="search_hint">Поиск стран...</string>
+    <string name="search_tips_toggle">Подсказка по поиску</string>
+    <string name="search_tips_body">Можно искать по названию страны, столице или языку.</string>
     <string name="favorites">Избранное</string>
     <string name="countries_list">Список стран</string>
     <string name="loading">Загрузка...</string>
@@ -19,4 +22,7 @@
     <string name="timezones">Часовые пояса</string>
     <string name="borders">Граничит с</string>
     <string name="refresh">Обновить</string>
+    <string name="filter_favorites_only">Только избранное</string>
+    <string name="sort_by_name">По названию</string>
+    <string name="sort_by_population">По населению</string>
 </resources>

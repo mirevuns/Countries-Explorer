@@ -6,6 +6,7 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.countriesexplorer.data.model.Country
 import com.countriesexplorer.ui.screen.CountriesListScreen
 import com.countriesexplorer.ui.screen.CountryDetailScreen
 import com.countriesexplorer.ui.screen.FavoritesScreen
@@ -22,7 +23,7 @@ sealed class Screen(val route: String) {
 fun NavGraph(
     navController: NavHostController,
     favoritesSet: Set<String>,
-    onFavoriteToggle: (String) -> Unit
+    onFavoriteToggle: (String, Country?) -> Unit
 ) {
     NavHost(
         navController = navController,
@@ -61,7 +62,7 @@ fun NavGraph(
                 countryCode = code,
                 onNavigateBack = { navController.popBackStack() },
                 isFavorite = favoritesSet.contains(code),
-                onFavoriteToggle = { onFavoriteToggle(code) }
+                onFavoriteToggle = onFavoriteToggle
             )
         }
     }
