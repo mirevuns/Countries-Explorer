@@ -32,8 +32,8 @@ class MainActivity : ComponentActivity() {
                     NavGraph(
                         navController = navController,
                         favoritesSet = favoritesSet,
-                        onFavoriteToggle = { code ->
-                            favoritesViewModel.toggleFavorite(code)
+                        onFavoriteToggle = { code, country ->
+                            favoritesViewModel.toggleFavorite(code, country)
                         }
                     )
                 }

@@ -1,14 +1,21 @@
 package com.countriesexplorer.ui.screen
 
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -31,11 +38,12 @@ fun CountriesListScreen(
     onNavigateToDetail: (String) -> Unit,
     onNavigateToFavorites: () -> Unit,
     favoritesSet: Set<String>,
-    onFavoriteToggle: (String) -> Unit,
+    onFavoriteToggle: (String, Country) -> Unit,
     viewModel: CountriesListViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
+    val listPrefs by viewModel.listPreferences.collectAsState()
     
     Scaffold(
         topBar = {
@@ -68,25 +76,73 @@ fun CountriesListScreen(
                 onValueChange = { viewModel.onSearchQueryChanged(it) },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
                 placeholder = { Text(stringResource(R.string.search_hint)) },
                 singleLine = true
             )
-            
+
+            var searchTipsExpanded by remember { mutableStateOf(false) }
+            TextButton(
+                onClick = { searchTipsExpanded = !searchTipsExpanded },
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 0.dp)
+            ) {
+                Text(stringResource(R.string.search_tips_toggle))
+            }
+            if (searchTipsExpanded) {
+                Text(
+                    text = stringResource(R.string.search_tips_body),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                )
+            }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                FilterChip(
+                    selected = listPrefs.showFavoritesOnly,
+                    onClick = {
+                        viewModel.setShowFavoritesOnly(!listPrefs.showFavoritesOnly)
+                    },
+                    label = { Text(stringResource(R.string.filter_favorites_only)) }
+                )
+                FilterChip(
+                    selected = listPrefs.sortByName,
+                    onClick = { viewModel.setSortByName(true) },
+                    label = { Text(stringResource(R.string.sort_by_name)) }
+                )
+                FilterChip(
+                    selected = !listPrefs.sortByName,
+                    onClick = { viewModel.setSortByName(false) },
+                    label = { Text(stringResource(R.string.sort_by_population)) }
+                )
+            }
+
             when (val state = uiState) {
                 is UiState.Loading -> {
                     Box(
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .weight(1f, fill = true),
                         contentAlignment = Alignment.Center
                     ) {
-                        CircularProgressIndicator()
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(stringResource(R.string.loading))
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            CircularProgressIndicator()
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(stringResource(R.string.loading))
+                        }
                     }
                 }
                 is UiState.Error -> {
                     Box(
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .weight(1f, fill = true),
                         contentAlignment = Alignment.Center
                     ) {
                         Column(
@@ -114,7 +170,9 @@ fun CountriesListScreen(
                 }
                 is UiState.Empty -> {
                     Box(
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .weight(1f, fill = true),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(stringResource(R.string.no_countries_found))
@@ -122,7 +180,9 @@ fun CountriesListScreen(
                 }
                 is UiState.Success -> {
                     LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .weight(1f, fill = true),
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
@@ -130,12 +190,12 @@ fun CountriesListScreen(
                             CountryItem(
                                 country = country,
                                 isFavorite = favoritesSet.contains(CountryCodeHelper.getCountryCode(country)),
-                                onItemClick = { 
+                                onItemClick = {
                                     viewModel.clearSearch()
                                     onNavigateToDetail(CountryCodeHelper.getCountryCode(country))
                                 },
                                 onFavoriteClick = {
-                                    onFavoriteToggle(CountryCodeHelper.getCountryCode(country))
+                                    onFavoriteToggle(CountryCodeHelper.getCountryCode(country), country)
                                 }
                             )
                         }

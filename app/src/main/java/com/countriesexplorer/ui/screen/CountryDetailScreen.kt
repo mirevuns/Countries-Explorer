@@ -20,6 +20,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.countriesexplorer.R
+import com.countriesexplorer.data.model.Country
 import com.countriesexplorer.ui.state.UiState
 import com.countriesexplorer.ui.viewmodel.CountryDetailViewModel
 import com.countriesexplorer.util.CountryCodeHelper
@@ -30,7 +31,7 @@ fun CountryDetailScreen(
     countryCode: String,
     onNavigateBack: () -> Unit,
     isFavorite: Boolean,
-    onFavoriteToggle: () -> Unit,
+    onFavoriteToggle: (String, Country?) -> Unit,
     viewModel: CountryDetailViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -52,7 +53,17 @@ fun CountryDetailScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = onFavoriteToggle) {
+                    IconButton(
+                        onClick = {
+                            if (isFavorite) {
+                                onFavoriteToggle(countryCode, null)
+                            } else {
+                                val c = (uiState as? UiState.Success)?.data
+                                if (c != null) onFavoriteToggle(countryCode, c)
+                            }
+                        },
+                        enabled = isFavorite || uiState is UiState.Success
+                    ) {
                         Icon(
                             imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                             contentDescription = if (isFavorite) "Удалить из избранного" else "Добавить в избранное",

@@ -1,8 +1,13 @@
+.git_commit_msg.txt
 *.iml
 .gradle
 /local.properties
 .idea/
 .DS_Store
+*.log
+replay_pid*
+*.hprof
+.kotlin/
 /build
 **/build/
 /captures

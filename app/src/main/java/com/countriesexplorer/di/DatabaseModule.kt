@@ -22,7 +22,9 @@ object DatabaseModule {
             context,
             AppDatabase::class.java,
             "countries_db"
-        ).build()
+        )
+            .fallbackToDestructiveMigration()
+            .build()
     }
     
     @Provides
