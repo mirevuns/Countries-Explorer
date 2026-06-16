@@ -44,13 +44,13 @@ REST Countries v5 требует API‑ключ (free tier).
 
 Pull request с рабочим кодом и описанием по требованиям курса.
 
-## Сколько сделано юнит-тестов: 16 
+## Сколько сделано юнит-тестов: 21
 
 (`app/src/test`), интеграционных 7 (`app/src/androidTest`). В `test/` - JVM, ViewModel, репозиторий + MockWebServer, фейковый DAO, без Hilt/Compose/Navigation. В `androidTest/` - Hilt, Compose, навигация, Room in-memory, мок-сервер через тестовый модуль.
 
-## Юнит (16) 
+## Юнит (21)
 
-`CountriesListViewModelTest` (6), `CountryDetailViewModelTest` (3), `FavoritesSharedViewModelTest` (2), `CountriesRepositoryTest` (2), `FavoriteEntityTest` (1), `CountryCodeHelperTest` (2).
+`CountriesListViewModelTest` (7), `CountryDetailViewModelTest` (3), `FavoritesSharedViewModelTest` (2), `CountriesRepositoryTest` (6), `FavoriteEntityTest` (1), `CountryCodeHelperTest` (2).
 
 ## Интеграция (7) 
 
