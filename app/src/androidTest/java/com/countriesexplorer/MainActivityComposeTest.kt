@@ -16,8 +16,10 @@ import com.countriesexplorer.R
 import com.countriesexplorer.ui.navigation.NavGraph
 import com.countriesexplorer.ui.theme.CountriesExplorerTheme
 import com.countriesexplorer.ui.viewmodel.FavoritesSharedViewModel
+import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.android.testing.HiltAndroidRule
 import dagger.hilt.android.testing.HiltAndroidTest
+import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.AfterClass
 import org.junit.Before
@@ -57,6 +59,13 @@ class MainActivityComposeTest {
     fun inject() {
         hiltRule.inject()
         TestApiHolder.resetAlphaErrorArm()
+        runBlocking {
+            val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext
+            val prefs = EntryPointAccessors.fromApplication(app, InstrumentedTestEntryPoint::class.java)
+                .listPreferencesRepository()
+            prefs.setShowFavoritesOnly(false)
+            prefs.setSortByName(true)
+        }
 
         composeRule.setContent {
             CountriesExplorerTheme {
