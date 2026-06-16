@@ -4,7 +4,6 @@ import com.countriesexplorer.MainDispatcherRule
 import com.countriesexplorer.TestFixtures
 import com.countriesexplorer.data.model.Country
 import com.countriesexplorer.data.repository.CountriesRepository
-import com.countriesexplorer.testdoubles.FakeFavoriteDao
 import com.countriesexplorer.ui.state.UiState
 import io.mockk.coEvery
 import io.mockk.mockk
@@ -41,7 +40,7 @@ class CountriesListViewModelTest {
     fun `uiState emission sequence includes Loading then Success`() = runTest(mainDispatcherRule.dispatcher) {
         val c = TestFixtures.country()
         val repo = repoWithGetAll(listOf(c))
-        val vm = CountriesListViewModel(repo, FakeFavoriteDao())
+        val vm = CountriesListViewModel(repo)
         withUiStateActive(vm) {
             advanceUntilIdle()
             val final = vm.uiState.value
@@ -62,7 +61,7 @@ class CountriesListViewModelTest {
             }
             coEvery { searchCountries(any()) } returns emptyList()
         }
-        val vm = CountriesListViewModel(repo, FakeFavoriteDao())
+        val vm = CountriesListViewModel(repo)
         withUiStateActive(vm) {
             advanceUntilIdle()
             assertTrue(vm.uiState.value is UiState.Error)
@@ -86,7 +85,7 @@ class CountriesListViewModelTest {
                 listOf(c)
             }
         }
-        val vm = CountriesListViewModel(repo, FakeFavoriteDao())
+        val vm = CountriesListViewModel(repo)
         withUiStateActive(vm) {
             advanceUntilIdle()
             vm.onSearchQueryChanged("found")
@@ -105,7 +104,7 @@ class CountriesListViewModelTest {
     @Test
     fun `empty remote list yields Empty not Success with empty list`() = runTest(mainDispatcherRule.dispatcher) {
         val repo = repoWithGetAll(emptyList())
-        val vm = CountriesListViewModel(repo, FakeFavoriteDao())
+        val vm = CountriesListViewModel(repo)
         withUiStateActive(vm) {
             advanceUntilIdle()
             assertTrue(vm.uiState.value is UiState.Empty)
@@ -118,7 +117,7 @@ class CountriesListViewModelTest {
             coEvery { getAllCountries() } returns listOf(TestFixtures.country())
             coEvery { searchCountries(any()) } returns emptyList()
         }
-        val vm = CountriesListViewModel(repo, FakeFavoriteDao())
+        val vm = CountriesListViewModel(repo)
         withUiStateActive(vm) {
             advanceUntilIdle()
             vm.onSearchQueryChanged("nope")

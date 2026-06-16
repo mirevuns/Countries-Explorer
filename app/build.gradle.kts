@@ -68,7 +68,11 @@ android {
     }
     testOptions {
         unitTests.all {
+            // Keep test executor memory bounded on Windows.
+            it.maxHeapSize = "512m"
             it.jvmArgs(
+                "-Xmx512m",
+                "-XX:MaxMetaspaceSize=256m",
                 "-XX:+EnableDynamicAgentLoading",
                 "-Djdk.attach.allowAttachSelf=true"
             )

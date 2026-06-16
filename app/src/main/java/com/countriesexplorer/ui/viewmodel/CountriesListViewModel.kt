@@ -2,7 +2,6 @@ package com.countriesexplorer.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.countriesexplorer.data.local.FavoriteDao
 import com.countriesexplorer.data.model.Country
 import com.countriesexplorer.data.repository.CountriesRepository
 import com.countriesexplorer.ui.state.UiState
@@ -15,8 +14,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class CountriesListViewModel @Inject constructor(
-    private val repository: CountriesRepository,
-    private val favoriteDao: FavoriteDao
+    private val repository: CountriesRepository
 ) : ViewModel() {
 
     private val _searchQuery = MutableStateFlow("")
