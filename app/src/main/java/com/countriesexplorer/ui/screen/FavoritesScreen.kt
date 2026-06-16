@@ -7,29 +7,24 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
 import com.countriesexplorer.R
+import com.countriesexplorer.data.local.FavoriteEntity
 import com.countriesexplorer.data.model.Country
-import com.countriesexplorer.ui.viewmodel.FavoritesSharedViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FavoritesScreen(
+    favoriteEntries: List<FavoriteEntity>,
     onNavigateBack: () -> Unit,
     onNavigateToDetail: (String) -> Unit,
     favoritesSet: Set<String>,
-    onFavoriteToggle: (String, Country?) -> Unit,
-    viewModel: FavoritesSharedViewModel = hiltViewModel()
+    onFavoriteToggle: (String, Country?) -> Unit
 ) {
-    val entries by viewModel.favoriteEntries.collectAsState()
-
     Scaffold(
         topBar = {
             TopAppBar(
@@ -38,14 +33,14 @@ fun FavoritesScreen(
                     IconButton(onClick = onNavigateBack) {
                         Icon(
                             imageVector = Icons.Default.ArrowBack,
-                            contentDescription = "Назад"
+                            contentDescription = stringResource(R.string.back)
                         )
                     }
                 }
             )
         }
     ) { padding ->
-        if (entries.isEmpty()) {
+        if (favoriteEntries.isEmpty()) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -65,13 +60,14 @@ fun FavoritesScreen(
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(entries, key = { it.code }) { entity ->
-                    val code = entity.code
+                items(favoriteEntries, key = { it.code }) { entity ->
                     CountryItem(
-                        country = entity.country,
-                        isFavorite = favoritesSet.contains(code),
-                        onItemClick = { onNavigateToDetail(code) },
-                        onFavoriteClick = { onFavoriteToggle(code, null) }
+                        displayName = entity.name,
+                        region = entity.region,
+                        flagUrl = entity.flagUrl,
+                        isFavorite = favoritesSet.contains(entity.code),
+                        onItemClick = { onNavigateToDetail(entity.code) },
+                        onFavoriteClick = { onFavoriteToggle(entity.code, null) }
                     )
                 }
             }

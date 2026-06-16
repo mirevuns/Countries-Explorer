@@ -35,11 +35,10 @@ class FavoritesSharedViewModel @Inject constructor(
 
     fun toggleFavorite(code: String, country: Country? = null) {
         viewModelScope.launch {
-            val isFav = favoriteDao.isFavorite(code)
-            if (isFav) {
+            if (country != null) {
+                favoriteDao.toggleFavorite(FavoriteEntity.fromCountry(country))
+            } else {
                 favoriteDao.deleteByCode(code)
-            } else if (country != null) {
-                favoriteDao.insert(FavoriteEntity.fromCountry(country))
             }
         }
     }

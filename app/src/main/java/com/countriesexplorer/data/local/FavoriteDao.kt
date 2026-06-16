@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -23,4 +24,13 @@ interface FavoriteDao {
     
     @Query("SELECT EXISTS(SELECT 1 FROM favorites WHERE code = :code)")
     suspend fun isFavorite(code: String): Boolean
+
+    @Transaction
+    suspend fun toggleFavorite(entity: FavoriteEntity) {
+        if (isFavorite(entity.code)) {
+            deleteByCode(entity.code)
+        } else {
+            insert(entity)
+        }
+    }
 }

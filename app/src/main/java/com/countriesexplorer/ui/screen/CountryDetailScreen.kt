@@ -8,7 +8,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -16,39 +16,32 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.countriesexplorer.R
 import com.countriesexplorer.data.model.Country
 import com.countriesexplorer.ui.state.UiState
-import com.countriesexplorer.ui.viewmodel.CountryDetailViewModel
 import com.countriesexplorer.util.CountryCodeHelper
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CountryDetailScreen(
     countryCode: String,
+    uiState: UiState<Country>,
     onNavigateBack: () -> Unit,
+    onRetry: () -> Unit,
     isFavorite: Boolean,
-    onFavoriteToggle: (String, Country?) -> Unit,
-    viewModel: CountryDetailViewModel = hiltViewModel()
+    onFavoriteToggle: (String, Country?) -> Unit
 ) {
-    val uiState by viewModel.uiState.collectAsState()
-    
-    LaunchedEffect(countryCode) {
-        viewModel.loadCountry(countryCode)
-    }
-    
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Детали страны") },
+                title = { Text(stringResource(R.string.country_detail_title)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
                             imageVector = Icons.Default.ArrowBack,
-                            contentDescription = "Назад"
+                            contentDescription = stringResource(R.string.back)
                         )
                     }
                 },
@@ -66,7 +59,9 @@ fun CountryDetailScreen(
                     ) {
                         Icon(
                             imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                            contentDescription = if (isFavorite) "Удалить из избранного" else "Добавить в избранное",
+                            contentDescription = stringResource(
+                                if (isFavorite) R.string.remove_from_favorites else R.string.add_to_favorites
+                            ),
                             tint = if (isFavorite) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
                         )
                     }
@@ -98,7 +93,11 @@ fun CountryDetailScreen(
                         modifier = Modifier.padding(horizontal = 24.dp)
                     ) {
                         Text(
-                            text = stringResource(R.string.error_occurred),
+                            text = if (state.retryable) {
+                                stringResource(R.string.error_occurred)
+                            } else {
+                                stringResource(R.string.country_not_found)
+                            },
                             style = MaterialTheme.typography.titleMedium,
                             textAlign = TextAlign.Center
                         )
@@ -107,9 +106,11 @@ fun CountryDetailScreen(
                             text = state.message,
                             textAlign = TextAlign.Center
                         )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Button(onClick = { viewModel.loadCountry(countryCode) }) {
-                            Text(stringResource(R.string.retry))
+                        if (state.retryable) {
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Button(onClick = onRetry) {
+                                Text(stringResource(R.string.retry))
+                            }
                         }
                     }
                 }
@@ -141,69 +142,69 @@ fun CountryDetailScreen(
                             .fillMaxWidth()
                             .height(200.dp)
                     )
-                    
+
                     Spacer(modifier = Modifier.height(24.dp))
-                    
+
                     Text(
                         text = country.displayName,
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.Bold
                     )
-                    
+
                     Spacer(modifier = Modifier.height(16.dp))
-                    
+
                     DetailRow(
                         label = stringResource(R.string.capital),
-                        value = country.capital?.joinToString() ?: "Нет данных"
+                        value = country.capital?.joinToString() ?: stringResource(R.string.no_data)
                     )
-                    
+
                     DetailRow(
                         label = stringResource(R.string.population),
                         value = String.format("%,d", country.population)
                     )
-                    
+
                     country.area?.let {
                         DetailRow(
                             label = stringResource(R.string.area),
-                            value = "${String.format("%.2f", it)} км²"
+                            value = stringResource(R.string.area_sq_km, it)
                         )
                     }
-                    
+
                     DetailRow(
                         label = stringResource(R.string.region),
                         value = country.region
                     )
-                    
+
                     country.subregion?.let {
                         DetailRow(
                             label = stringResource(R.string.subregion),
                             value = it
                         )
                     }
-                    
+
                     country.languages?.let { languages ->
                         DetailRow(
                             label = stringResource(R.string.languages),
                             value = languages.values.joinToString()
                         )
                     }
-                    
+
                     country.currencies?.let { currencies ->
                         DetailRow(
                             label = stringResource(R.string.currencies),
-                            value = currencies.values.joinToString { 
+                            value = currencies.values.joinToString {
                                 "${it.name} (${it.symbol ?: ""})"
                             }
                         )
                     }
-                    
+
                     country.timezones?.let { timezones ->
                         DetailRow(
                             label = stringResource(R.string.timezones),
                             value = timezones.joinToString()
                         )
                     }
-                    
+
                     country.borders?.let { borders ->
                         if (borders.isNotEmpty()) {
                             DetailRow(

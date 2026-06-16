@@ -29,20 +29,30 @@ object TestFixtures {
 
     fun singleCountryJsonArray(commonName: String = "Testland", cca2: String = "TL"): String {
         val esc = commonName.replace("\"", "\\\"")
-        return """[{
-            "name":{"common":"$esc","official":"$esc"},
-            "cca2":"$cca2",
-            "cca3":"${cca2}A",
-            "capital":["Capital City"],
+        return v5ResponseBody(
+            """{
+            "names":{"common":"$esc","official":"$esc"},
+            "codes":{"alpha_2":"$cca2","alpha_3":"${cca2}A"},
+            "capitals":[{"name":"Capital City"}],
             "population":1000000,
-            "area":100.0,
+            "area":{"kilometers":100.0},
             "region":"Europe",
             "subregion":"North",
-            "flags":{"png":"https://example.com/f.png","svg":null},
-            "languages":{"eng":"English"},
-            "currencies":{"TST":{"name":"Test","symbol":"T"}},
+            "flag":{"url_png":"https://example.com/f.png","url_svg":null},
+            "languages":[{"bcp47":"eng","name":"English"}],
+            "currencies":[{"code":"TST","name":"Test","symbol":"T"}],
             "timezones":["UTC"],
             "borders":[]
-        }]""".trimIndent().replace("\n", "")
+        }"""
+        )
     }
+
+    fun v5ResponseBody(objectJson: String, more: Boolean = false): String {
+        return """{"data":{"objects":[$objectJson],"meta":{"total":1,"count":1,"limit":100,"offset":0,"more":$more}}}"""
+            .trimIndent()
+            .replace("\n", "")
+    }
+
+    fun v5EmptyResponseBody(): String =
+        """{"data":{"objects":[],"meta":{"total":0,"count":0,"limit":100,"offset":0,"more":false}}}"""
 }

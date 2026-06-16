@@ -28,4 +28,12 @@ class FakeFavoriteDao : FavoriteDao {
 
     override suspend fun isFavorite(code: String): Boolean =
         entities.value.any { it.code == code }
+
+    override suspend fun toggleFavorite(entity: FavoriteEntity) {
+        if (isFavorite(entity.code)) {
+            deleteByCode(entity.code)
+        } else {
+            insert(entity)
+        }
+    }
 }

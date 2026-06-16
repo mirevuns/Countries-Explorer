@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.countriesexplorer.data.model.Country
 import com.countriesexplorer.data.repository.CountriesRepository
+import com.countriesexplorer.data.repository.CountryNotFoundException
 import com.countriesexplorer.ui.state.UiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,22 +17,26 @@ import javax.inject.Inject
 class CountryDetailViewModel @Inject constructor(
     private val repository: CountriesRepository
 ) : ViewModel() {
-    
+
     private val _uiState = MutableStateFlow<UiState<Country>>(UiState.Loading)
     val uiState: StateFlow<UiState<Country>> = _uiState.asStateFlow()
-    
+
     fun loadCountry(code: String) {
         viewModelScope.launch {
             _uiState.value = UiState.Loading
             try {
                 val country = repository.getCountryByCode(code)
-                _uiState.value = if (country != null) {
-                    UiState.Success(country)
-                } else {
-                    UiState.Error("Страна не найдена")
-                }
+                _uiState.value = UiState.Success(country)
+            } catch (e: CountryNotFoundException) {
+                _uiState.value = UiState.Error(
+                    message = "Страна не найдена",
+                    retryable = false
+                )
             } catch (e: Exception) {
-                _uiState.value = UiState.Error(e.message ?: "Неизвестная ошибка")
+                _uiState.value = UiState.Error(
+                    message = e.message ?: "Неизвестная ошибка",
+                    retryable = true
+                )
             }
         }
     }

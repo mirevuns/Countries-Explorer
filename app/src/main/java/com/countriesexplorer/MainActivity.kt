@@ -6,9 +6,10 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.rememberNavController
 import com.countriesexplorer.ui.navigation.NavGraph
 import com.countriesexplorer.ui.theme.CountriesExplorerTheme
@@ -27,10 +28,11 @@ class MainActivity : ComponentActivity() {
                 ) {
                     val navController = rememberNavController()
                     val favoritesViewModel: FavoritesSharedViewModel = hiltViewModel()
-                    val favoritesSet by favoritesViewModel.favorites.collectAsState()
+                    val favoritesSet by favoritesViewModel.favorites.collectAsStateWithLifecycle()
                     
                     NavGraph(
                         navController = navController,
+                        favoritesViewModel = favoritesViewModel,
                         favoritesSet = favoritesSet,
                         onFavoriteToggle = { code, country ->
                             favoritesViewModel.toggleFavorite(code, country)

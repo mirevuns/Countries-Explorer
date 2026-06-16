@@ -4,9 +4,9 @@ import com.countriesexplorer.data.model.Country
 
 object CountryCodeHelper {
     fun getCountryCode(country: Country): String {
-        return country.countryCode.ifEmpty {
-            country.displayName.take(2).uppercase()
-        }
+        return country.cca2?.takeIf { it.isNotBlank() }
+            ?: country.cca3?.takeIf { it.isNotBlank() }
+            ?: ""
     }
     
     fun getFlagUrl(country: Country): String {

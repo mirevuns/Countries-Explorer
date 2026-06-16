@@ -1,8 +1,17 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("com.google.dagger.hilt.android")
     kotlin("kapt")
+}
+
+val localProperties = Properties().apply {
+    val file = rootProject.file("local.properties")
+    if (file.exists()) {
+        file.inputStream().use { load(it) }
+    }
 }
 
 android {
@@ -20,6 +29,12 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
+
+        val restCountriesApiKey = localProperties
+            .getProperty("REST_COUNTRIES_API_KEY")
+            ?.trim()
+            .orEmpty()
+        buildConfigField("String", "REST_COUNTRIES_API_KEY", "\"$restCountriesApiKey\"")
     }
 
     buildTypes {
@@ -41,6 +56,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.4"
@@ -48,6 +64,14 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        }
+    }
+    testOptions {
+        unitTests.all {
+            it.jvmArgs(
+                "-XX:+EnableDynamicAgentLoading",
+                "-Djdk.attach.allowAttachSelf=true"
+            )
         }
     }
 }
@@ -71,6 +95,7 @@ dependencies {
     
     // ViewModel
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.6.2")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.6.2")
     
     // Retrofit
     implementation("com.squareup.retrofit2:retrofit:2.9.0")

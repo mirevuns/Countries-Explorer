@@ -1,8 +1,13 @@
 # Countries Explorer (Android)
 
+**Автор:** Грибовский Илья Игоревич
+
 ## Описание
 
-Android-приложение для просмотра стран мира. REST Countries API. Экран избранного с сохранением в Room (данные переживают перезапуск приложения).
+**Countries Explorer** — Android-приложение для просмотра стран мира через **REST Countries API**. Экран избранного с **Room**: данные переживают перезапуск.
+
+- **Room:** таблица `favorites` (`code`, `name`, `region`, `flagUrl`). Тап по сердцу — запись в БД, снятие избранного — удаление. Экран избранного читает Room через **Flow**.
+- **Проверка:** добавить страну в избранное → закрыть приложение → снова открыть — избранное на месте.
 
 ## Стек и архитектура
 
@@ -10,63 +15,42 @@ Android-приложение для просмотра стран мира. REST
 - Retrofit + OkHttp + Gson
 - DI: Hilt
 - БД: Room (таблица favorites)
-- Архитектура: data (API, local) - Repository - ViewModel - UI
+- Архитектура: data (API, local) → Repository → ViewModel → UI
 
 ## API (REST Countries)
 
-- Base URL: https://restcountries.com/
-- List: GET /v3.1/region/{region} (Africa, Americas, Asia, Europe, Oceania, Antarctic)
-- Search: GET /v3.1/name/{name}
-- Detail: GET /v3.1/alpha/{code}
-- API ключ не требуется
-
-## Room
-
-Таблица: **favorites** (поля: code, name, country)
-
-Избранное сохраняется между перезапусками приложения.
-
-Проверка: добавить страну в избранное - закрыть приложение - запустить - избранное на месте.
+- Base URL: https://api.restcountries.com/
+- List: GET /countries/v5/region/{region}
+- Search: GET /countries/v5/name?q={name}
+- Detail: GET /countries/v5/code?q={code}
+- API ключ: добавить `REST_COUNTRIES_API_KEY` в `local.properties` (см. https://restcountries.com/sign-up)
 
 ## ДЗ 5
 
-## PR 
+Юнит- и интеграционные тесты, Room, навигация Compose, обработка ошибок без маскировки под `Empty`, детерминированные тесты ViewModel/репозитория.
 
-Pull request с рабочим кодом и описанием по требованиям курса.
+### Юнит-тесты
 
-## Сколько сделано юнит-тестов: 16 
+`CountriesListViewModelTest` (5), `CountryDetailViewModelTest` (3), `FavoritesSharedViewModelTest` (2), `CountriesRepositoryTest` (6), `FavoriteEntityTest` (1), `CountryCodeHelperTest` (2).
 
-(`app/src/test`), интеграционных 7 (`app/src/androidTest`). В `test/` - JVM, ViewModel, репозиторий + MockWebServer, фейковый DAO, без Hilt/Compose/Navigation. В `androidTest/` - Hilt, Compose, навигация, Room in-memory, мок-сервер через тестовый модуль.
+### Интеграция
 
-## Юнит (16) 
+`MainActivityComposeTest` (1), `NavigationComposeInstrumentedTest` (3), `FavoritesRoomInstrumentedTest` (2).
 
-`CountriesListViewModelTest` (6), `CountryDetailViewModelTest` (3), `FavoritesSharedViewModelTest` (2), `CountriesRepositoryTest` (2), `FavoriteEntityTest` (1), `CountryCodeHelperTest` (2).
+### Запуск тестов
 
-## Интеграция (7) 
-
-`MainActivityComposeTest` (2), `NavigationComposeInstrumentedTest` (3), `FavoritesRoomInstrumentedTest` (2).
-
-## Сценарии 
-
-Загрузка списка и деталей; ошибка сети - повтор - успех; пустой список и пустой поиск - `Empty`; debounce поиска; фильтр избранного через `combine` без лишнего `getAllCountries`; избранное и Room (дубликат по коду, Flow после insert); репозиторий + MockWebServer; UI: список - детали, ошибка детали - «Повторить», подсказка поиска (`mutableStateOf`).
-
-## Flow в тестах 
-
-для `CountriesListViewModel.uiState` проверяются цепочки `Loading`/`Success`/`Empty`/`Error` и смена данных при фильтрах; для `favoriteEntries` - Turbine (`[]` - список с записью); для `favorites` и Room `Flow` - обновление после insert/toggle. Где `SharingStarted.WhileSubscribed`, в тестах держится активный коллектор.
-
-## Запуск 
-
-`gradlew.bat :app:testDebugUnitTest`, `gradlew.bat :app:connectedDebugAndroidTest` (эмулятор или устройство).
-
-## ДЗ 6
-
-В списке стран: `combine`, `merge`, `debounce`, `distinctUntilChanged`, `flatMapLatest`, `MutableSharedFlow`, `stateIn` + `WhileSubscribed`; настройки списка - DataStore (`ListPreferencesRepository`); избранное - Room. Локальный UI на экране списка: **`mutableStateOf`** (подсказка по поиску), остальное - `StateFlow` + `collectAsState()`.
+```bat
+.\gradlew.bat :app:testDebugUnitTest
+.\gradlew.bat :app:connectedDebugAndroidTest
+```
 
 ## Сборка (JDK 17)
 
-Windows: `gradlew.bat assembleDebug`
+```bat
+.\gradlew.bat assembleDebug
+```
 
-## Скриншоты 
+## Скриншоты
 
 ![Загрузка](screenshots/loading.png)
 ![Ошибка загрузки](screenshots/error.png)

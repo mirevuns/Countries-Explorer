@@ -11,6 +11,7 @@
     <string name="error_occurred">Произошла ошибка</string>
     <string name="retry">Повторить</string>
     <string name="no_countries_found">Страны не найдены</string>
+    <string name="country_not_found">Страна не найдена</string>
     <string name="no_favorites">Нет избранных стран</string>
     <string name="capital">Столица</string>
     <string name="population">Население</string>
@@ -25,4 +26,11 @@
     <string name="filter_favorites_only">Только избранное</string>
     <string name="sort_by_name">По названию</string>
     <string name="sort_by_population">По населению</string>
+    <string name="country_detail_title">Детали страны</string>
+    <string name="back">Назад</string>
+    <string name="add_to_favorites">Добавить в избранное</string>
+    <string name="remove_from_favorites">Удалить из избранного</string>
+    <string name="no_data">Нет данных</string>
+    <string name="area_sq_km">%1$.2f км²</string>
+    <string name="sort_label">Сортировка</string>
 </resources>

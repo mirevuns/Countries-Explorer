@@ -10,7 +10,8 @@ data class FavoriteEntity(
     @PrimaryKey
     val code: String,
     val name: String,
-    val country: Country
+    val region: String,
+    val flagUrl: String
 ) {
     companion object {
         fun fromCountry(country: Country): FavoriteEntity {
@@ -18,7 +19,8 @@ data class FavoriteEntity(
             return FavoriteEntity(
                 code = code,
                 name = country.displayName,
-                country = country
+                region = country.region,
+                flagUrl = CountryCodeHelper.getFlagUrl(country)
             )
         }
     }

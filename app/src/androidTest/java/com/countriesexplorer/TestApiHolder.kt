@@ -28,18 +28,20 @@ object TestApiHolder {
             if (!started) {
                 server.dispatcher = object : Dispatcher() {
                     override fun dispatch(request: RecordedRequest): MockResponse {
-                        val path = request.path ?: ""
-                        if (path.contains("/alpha/") && alphaErrorsRemaining.get() > 0) {
+                        val path = request.path ?: return notFound()
+                        if (path.contains("/code") && alphaErrorsRemaining.get() > 0) {
                             alphaErrorsRemaining.decrementAndGet()
                             return MockResponse()
                                 .setResponseCode(500)
                                 .setBody("{}")
                                 .addHeader("Content-Type", "application/json")
                         }
-                        return MockResponse()
-                            .setBody(TestResponses.singleCountryJsonArray())
-                            .setResponseCode(200)
-                            .addHeader("Content-Type", "application/json")
+                        return when {
+                            path.contains("/region/") -> ok(TestResponses.regionCountriesJsonArray())
+                            path.contains("/name") -> ok(TestResponses.searchCountriesJsonArray())
+                            path.contains("/code") -> ok(TestResponses.singleCountryJsonResponse())
+                            else -> notFound()
+                        }
                     }
                 }
                 server.start()
@@ -47,4 +49,14 @@ object TestApiHolder {
             }
         }
     }
+
+    private fun ok(body: String) = MockResponse()
+        .setBody(body)
+        .setResponseCode(200)
+        .addHeader("Content-Type", "application/json")
+
+    private fun notFound() = MockResponse()
+        .setResponseCode(404)
+        .setBody("[]")
+        .addHeader("Content-Type", "application/json")
 }

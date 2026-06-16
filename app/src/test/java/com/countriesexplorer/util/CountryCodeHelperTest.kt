@@ -15,11 +15,11 @@ class CountryCodeHelperTest {
     }
 
     @Test
-    fun getCountryCode_emptyIso_usesFirstTwoLettersOfDisplayName() {
-        val c = Country(
-            name = Name(common = "Abcd", official = "Abcd", nativeName = null),
-            cca2 = "",
-            cca3 = "",
+    fun getCountryCode_fallsBackToCca3WhenCca2Missing() {
+        val country = Country(
+            name = Name(common = "Testland", official = "Testland", nativeName = null),
+            cca2 = null,
+            cca3 = "TLA",
             capital = null,
             population = 0L,
             area = null,
@@ -31,6 +31,6 @@ class CountryCodeHelperTest {
             timezones = null,
             borders = null
         )
-        assertEquals("AB", CountryCodeHelper.getCountryCode(c))
+        assertEquals("TLA", CountryCodeHelper.getCountryCode(country))
     }
 }
