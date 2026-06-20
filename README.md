@@ -1,86 +1,112 @@
-# Countries Explorer (Android)
+# Countries Explorer — финальный проект
 
-**Автор:** Грибовский Илья Игоревич
+Android-приложение для просмотра стран через **REST Countries API**. Offline-first: данные кэшируются в Room, пользовательские заметки и история просмотров сохраняются локально, фоновая синхронизация — через WorkManager.
 
-## Описание
+**Стек:** Kotlin, Jetpack Compose, Coroutines, Retrofit, Room, DataStore, Hilt, WorkManager.
 
-**Countries Explorer** — Android-приложение для просмотра стран мира через **REST Countries API**. Экран избранного с **Room**: данные переживают перезапуск.
+**Ветка:** `feature/final-project`
 
-- **Room:** таблица `favorites` (код, имя и сохранённые поля страны). Тап по сердцу — запись в БД, снятие избранного — удаление. Список избранного и фильтр «только избранное» читают Room через **Flow** (`getAllFavoritesFlow`, `getAllFavoriteCodes`) и обновляются без ручного опроса.
-- **Проверка:** добавить страну в избранное → закрыть приложение → снова открыть — избранное на месте.
+### Запуск
 
-## Стек и архитектура
+```text
+gradlew.bat assembleDebug
+gradlew.bat :app:testDebugUnitTest
+gradlew.bat :app:connectedDebugAndroidTest
+```
 
-- Kotlin + Jetpack Compose + Coroutines
-- Retrofit + OkHttp + Gson
-- DI: Hilt
-- БД: Room (таблица favorites)
-- Архитектура: data (API, local) - Repository - ViewModel - UI
+API-ключ REST Countries v5 — в `local.properties`:
 
-## API (REST Countries)
+```text
+REST_COUNTRIES_API_KEY=YOUR_KEY
+```
 
-- Base URL: https://api.restcountries.com/
-- List: GET /countries/v5/region/{region} (Africa, Americas, Asia, Europe, Oceania)
-- Search: GET /countries/v5/name?q={name}
-- Detail: GET /countries/v5/code?q={code}
-- API ключ требуется (Bearer)
+Ключ: регистрация на https://restcountries.com/sign-up
 
-### Ключ API
-REST Countries v5 требует API‑ключ (free tier).
+---
 
-Как получить:
-- Зарегистрируйся на `https://restcountries.com/sign-up`
-- Добавь в `local.properties`:
+## Что добавлено в финальной работе
 
-`REST_COUNTRIES_API_KEY=YOUR_KEY`
+- **Offline-first `CountriesRepository`** — чтение из Room-кэша, обновление с API, TTL (`CachePolicy`), баннеры офлайн и устаревших данных.
+- **Экран «Настройки»** — TTL кэша, автообновление, синхронизация только по Wi‑Fi, предзагрузка; ручная синхронизация и очистка кэша; статус последней синхронизации.
+- **Экран «Недавние»** — список просмотренных стран из `visit_history`.
+- **Заметки на экране детали** — сохранение и удаление текста в `country_notes`.
+- **WorkManager** — периодическое обновление кэша и разовая предзагрузка (`SyncScheduler`, Hilt `WorkerFactory`).
+- **UI** — иконки «Настройки» и «Недавние» в топ-баре списка; информационные баннеры на списке и экране детали.
 
-## Room
+---
 
-Схема: **favorites** — `code` (PK), `name`, `country` (тип `Country` для отображения без лишних запросов к API). DAO: `Insert`/`DELETE`, `getAllFavoritesFlow()`, `getAllFavoriteCodes()`.
+## Новые пользовательские данные
 
-## ДЗ 5
+Добавлены таблицы Room (схема v4, миграция `3 → 4`):
 
-## PR 
+| Таблица | Назначение |
+|---------|------------|
+| `cached_countries` | Офлайн-кэш списка стран (JSON `Country`) |
+| `cache_metadata` | Время и статус последней полной синхронизации |
+| `visit_history` | Недавно просмотренные страны (код, имя, время) |
+| `country_notes` | Личные заметки пользователя к стране (по коду) |
 
-Pull request с рабочим кодом и описанием по требованиям курса.
+Настройки приложения (TTL, автообновление, Wi‑Fi only, предзагрузка) хранятся в **DataStore** (`AppSettingsRepository`) — это конфигурация, не пользовательский контент.
 
-## Сколько сделано юнит-тестов: 21
+---
 
-(`app/src/test`), интеграционных 7 (`app/src/androidTest`). В `test/` - JVM, ViewModel, репозиторий + MockWebServer, фейковый DAO, без Hilt/Compose/Navigation. В `androidTest/` - Hilt, Compose, навигация, Room in-memory, мок-сервер через тестовый модуль.
+## Новые сценарии
 
-## Юнит (21)
+1. **Офлайн-режим** - после синхронизации отключить сеть: список и детали открываются из кэша; баннер «Офлайн-режим: показаны сохранённые данные» (на детали — «Офлайн: детали из локального кэша»).
+2. **История и заметки** - открыть несколько стран → «Недавние»; на детали написать заметку → перезапуск приложения: история и заметка сохранены в Room.
+3. **Синхронизация** - в настройках включить автообновление или нажать «Синхронизировать» / «Предзагрузить офлайн»; кэш обновляется с учётом ограничения Wi‑Fi only.
+4. **Устаревший кэш** - при истечении TTL данные показываются с баннером «Данные могут быть устаревшими»; при наличии сети — обновление по запросу или в фоне.
 
-`CountriesListViewModelTest` (7), `CountryDetailViewModelTest` (3), `FavoritesSharedViewModelTest` (2), `CountriesRepositoryTest` (6), `FavoriteEntityTest` (1), `CountryCodeHelperTest` (2).
+---
 
-## Интеграция (7) 
+## Offline-first: как устроено
 
-`MainActivityComposeTest` (2), `NavigationComposeInstrumentedTest` (3), `FavoritesRoomInstrumentedTest` (2).
+Логика в `CountriesRepository` и `CachePolicy`:
 
-## Сценарии 
+1. **Нет сети** → вернуть данные из Room; если кэш пуст — ошибка.
+2. **Сеть есть, кэш свежий** (TTL не истёк) → вернуть кэш без запроса к API.
+3. **Сеть есть, кэш устарел или запрошено обновление** → запрос к REST Countries API, запись в `cached_countries`, обновление `cache_metadata`.
+4. **Ошибка сети/API при непустом кэше** → вернуть кэш с флагом `isStale`; UI показывает баннер об устаревших данных.
 
-Загрузка списка и деталей; ошибка сети - повтор - успех; пустой список и пустой поиск - `Empty`; debounce поиска; фильтр избранного через `combine` без лишнего `getAllCountries`; избранное и Room (дубликат по коду, Flow после insert); репозиторий + MockWebServer; UI: список - детали, ошибка детали - «Повторить», подсказка поиска (`mutableStateOf`).
+Загрузка детали страны — по тому же принципу. При открытии детали запись добавляется в `visit_history`.
 
-## Flow в тестах 
+---
 
-для `CountriesListViewModel.uiState` проверяются цепочки `Loading`/`Success`/`Empty`/`Error` и смена данных при фильтрах; для `favoriteEntries` - Turbine (`[]` - список с записью); для `favorites` и Room `Flow` - обновление после insert/toggle. Где `SharingStarted.WhileSubscribed`, в тестах держится активный коллектор.
+## Фоновая обработка (WorkManager)
 
-## Запуск 
+| Компонент | Где используется | Зачем |
+|-----------|------------------|-------|
+| `CountryCacheSyncWorker` | Периодическая задача (каждые 6 ч) | Автообновление кэша при включённом автообновлении; учитывает Wi‑Fi only |
+| `CountryPreloadWorker` | Разовая задача по кнопке «Предзагрузить офлайн» | Загрузка всех регионов в кэш для работы без сети |
+| `SyncScheduler` | `CountriesApplication.onCreate`, экран настроек | Планирование и отмена периодической синхронизации, запуск предзагрузки |
+| Hilt `WorkerFactory` | `CountriesApplication` | Внедрение зависимостей в workers |
 
-`gradlew.bat :app:testDebugUnitTest`, `gradlew.bat :app:connectedDebugAndroidTest` (эмулятор или устройство).
+WorkManager инициализируется в `CountriesApplication` (`Configuration.Provider`); автозапуск через manifest отключён.
 
-## ДЗ 6
+---
 
-В списке стран: `combine`, `merge`, `debounce`, `distinctUntilChanged`, `flatMapLatest`, `MutableSharedFlow`, `stateIn` + `WhileSubscribed`; настройки списка - DataStore (`ListPreferencesRepository`); избранное - Room. Локальный UI на экране списка: **`mutableStateOf`** (подсказка по поиску), остальное - `StateFlow` + `collectAsState()`.
+## Тесты
 
-## Сборка (JDK 17)
+**27 юнит-тестов** (`app/src/test`):
 
-Windows: `gradlew.bat assembleDebug`
+| Класс | Кол-во | Что проверяет |
+|-------|--------|---------------|
+| `CountriesListViewModelTest` | 7 | Состояния списка, фильтры, поиск |
+| `CountryDetailViewModelTest` | 3 | Загрузка детали, ошибки |
+| `FavoritesSharedViewModelTest` | 2 | Избранное |
+| `CountriesRepositoryTest` | 6 | API + кэш, offline / stale / force refresh |
+| `CachePolicyTest` | 3 | TTL кэша |
+| `VisitHistoryRepositoryTest` | 1 | Запись истории просмотров |
+| `CountryNoteRepositoryTest` | 2 | Сохранение и удаление заметок |
+| `FavoriteEntityTest` | 1 | Маппинг избранного |
+| `CountryCodeHelperTest` | 2 | URL флагов |
 
-## Скриншоты 
+**11 instrumented-тестов** (`app/src/androidTest`, Hilt + Compose + Room in-memory + MockWebServer):
 
-![Загрузка](screenshots/loading.png)
-![Ошибка загрузки](screenshots/error.png)
-![Список стран](screenshots/list.png)
-![Ничего не найдено](screenshots/empty.png)
-![Детали страны](screenshots/detail.png)
-![Избранное](screenshots/favorites.png)
+| Класс | Кол-во | Что проверяет |
+|-------|--------|---------------|
+| `MainActivityComposeTest` | 1 | Список стран, загрузка данных |
+| `NavigationComposeInstrumentedTest` | 3 | Навигация список → детали, детали из кэша при ошибке сети, поиск |
+| `FavoritesRoomInstrumentedTest` | 2 | Room: избранное, Flow |
+| `FinalProjectComposeInstrumentedTest` | 3 | Настройки, «Недавние», заметка в Room |
+| `CountryCacheWorkerInstrumentedTest` | 2 | `CountryPreloadWorker`, `CountryCacheSyncWorker` |

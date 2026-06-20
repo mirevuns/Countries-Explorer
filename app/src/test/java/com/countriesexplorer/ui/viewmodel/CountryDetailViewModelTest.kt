@@ -3,10 +3,14 @@ package com.countriesexplorer.ui.viewmodel
 import com.countriesexplorer.MainDispatcherRule
 import com.countriesexplorer.TestFixtures
 import com.countriesexplorer.data.repository.CountriesRepository
+import com.countriesexplorer.data.repository.CountryLoadResult
+import com.countriesexplorer.data.repository.CountryNoteRepository
 import com.countriesexplorer.data.repository.CountryNotFoundException
 import com.countriesexplorer.ui.state.UiState
 import io.mockk.coEvery
+import io.mockk.every
 import io.mockk.mockk
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertFalse
@@ -20,13 +24,18 @@ class CountryDetailViewModelTest {
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
 
+    private fun noteRepo(): CountryNoteRepository = mockk(relaxed = true) {
+        coEvery { getNote(any()) } returns null
+        every { observeNote(any()) } returns flowOf(null)
+    }
+
     @Test
     fun `loadCountry success emits Success`() = runTest(mainDispatcherRule.dispatcher) {
         val c = TestFixtures.country()
         val repo = mockk<CountriesRepository> {
-            coEvery { getCountryByCode("TL") } returns c
+            coEvery { getCountryByCode("TL") } returns CountryLoadResult(c, isStale = false, isOffline = false)
         }
-        val vm = CountryDetailViewModel(repo)
+        val vm = CountryDetailViewModel(repo, noteRepo())
         vm.loadCountry("TL")
         advanceUntilIdle()
         assertTrue(vm.uiState.value is UiState.Success)
@@ -37,7 +46,7 @@ class CountryDetailViewModelTest {
         val repo = mockk<CountriesRepository> {
             coEvery { getCountryByCode("ZZ") } throws CountryNotFoundException("ZZ")
         }
-        val vm = CountryDetailViewModel(repo)
+        val vm = CountryDetailViewModel(repo, noteRepo())
         vm.loadCountry("ZZ")
         advanceUntilIdle()
         val s = vm.uiState.value as UiState.Error
@@ -50,7 +59,7 @@ class CountryDetailViewModelTest {
         val repo = mockk<CountriesRepository> {
             coEvery { getCountryByCode(any()) } throws IOException("network")
         }
-        val vm = CountryDetailViewModel(repo)
+        val vm = CountryDetailViewModel(repo, noteRepo())
         vm.loadCountry("TL")
         advanceUntilIdle()
         val s = vm.uiState.value as UiState.Error

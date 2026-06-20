@@ -44,7 +44,7 @@ class CountriesListViewModel @Inject constructor(
 
     private val _searchRetryNonce = MutableStateFlow(0)
 
-    private val refreshSignals = MutableSharedFlow<Unit>(
+    private val refreshSignals = MutableSharedFlow<Boolean>(
         extraBufferCapacity = 1,
         onBufferOverflow = BufferOverflow.DROP_OLDEST
     )
@@ -65,17 +65,14 @@ class CountriesListViewModel @Inject constructor(
     }
 
     private val remoteListState: Flow<UiState<List<Country>>> = merge(
-        flowOf(Unit),
+        flowOf(false),
         refreshSignals
-    ).flatMapLatest {
+    ).flatMapLatest { forceRefresh ->
         flow {
             emit(UiState.Loading)
             try {
-                val countries = repository.getAllCountries()
-                emit(
-                    if (countries.isEmpty()) UiState.Empty
-                    else UiState.Success(countries)
-                )
+                val result = repository.getAllCountries(forceRefresh = forceRefresh)
+                emit(result.toUiState())
             } catch (e: Exception) {
                 emit(UiState.Error(e.message ?: "Неизвестная ошибка"))
             }
@@ -91,11 +88,8 @@ class CountriesListViewModel @Inject constructor(
                     } else {
                         emit(UiState.Loading)
                         try {
-                            val countries = repository.searchCountries(query.trim())
-                            emit(
-                                if (countries.isEmpty()) UiState.Empty
-                                else UiState.Success(countries)
-                            )
+                            val result = repository.searchCountries(query.trim())
+                            emit(result.toUiState())
                         } catch (e: Exception) {
                             val msg = e.message ?: ""
                             emit(
@@ -136,7 +130,11 @@ class CountriesListViewModel @Inject constructor(
         } else {
             list.sortedByDescending { it.population }
         }
-        return if (list.isEmpty()) UiState.Empty else UiState.Success(list)
+        return if (list.isEmpty()) {
+            UiState.Empty
+        } else {
+            state.copy(data = list)
+        }
     }
 
     fun onSearchQueryChanged(query: String) {
@@ -148,7 +146,7 @@ class CountriesListViewModel @Inject constructor(
             if (_searchQuery.value.isNotBlank()) {
                 _searchRetryNonce.value++
             } else {
-                refreshSignals.emit(Unit)
+                refreshSignals.emit(true)
             }
         }
     }
@@ -162,6 +160,19 @@ class CountriesListViewModel @Inject constructor(
     fun setSortByName(byName: Boolean) {
         viewModelScope.launch {
             listPreferencesRepository.setSortByName(byName)
+        }
+    }
+
+    private fun com.countriesexplorer.data.repository.CountriesLoadResult.toUiState(): UiState<List<Country>> {
+        return if (countries.isEmpty()) {
+            UiState.Empty
+        } else {
+            UiState.Success(
+                data = countries,
+                isStale = isStale,
+                lastUpdatedAt = lastSyncAt,
+                isOffline = isOffline
+            )
         }
     }
 }

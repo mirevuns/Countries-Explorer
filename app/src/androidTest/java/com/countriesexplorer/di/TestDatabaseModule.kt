@@ -3,7 +3,11 @@ package com.countriesexplorer.di
 import android.content.Context
 import androidx.room.Room
 import com.countriesexplorer.data.local.AppDatabase
+import com.countriesexplorer.data.local.CacheMetadataDao
+import com.countriesexplorer.data.local.CountryCacheDao
+import com.countriesexplorer.data.local.CountryNoteDao
 import com.countriesexplorer.data.local.FavoriteDao
+import com.countriesexplorer.data.local.VisitHistoryDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -26,9 +30,9 @@ object TestDatabaseModule {
             .build()
     }
 
-    @Provides
-    @Singleton
-    fun provideFavoriteDao(database: AppDatabase): FavoriteDao {
-        return database.favoriteDao()
-    }
+    @Provides @Singleton fun provideFavoriteDao(database: AppDatabase): FavoriteDao = database.favoriteDao()
+    @Provides @Singleton fun provideCountryCacheDao(database: AppDatabase): CountryCacheDao = database.countryCacheDao()
+    @Provides @Singleton fun provideCacheMetadataDao(database: AppDatabase): CacheMetadataDao = database.cacheMetadataDao()
+    @Provides @Singleton fun provideVisitHistoryDao(database: AppDatabase): VisitHistoryDao = database.visitHistoryDao()
+    @Provides @Singleton fun provideCountryNoteDao(database: AppDatabase): CountryNoteDao = database.countryNoteDao()
 }

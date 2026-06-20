@@ -2,12 +2,24 @@ package com.countriesexplorer.data.repository
 
 import com.countriesexplorer.TestFixtures
 import com.countriesexplorer.data.api.CountriesApi
+import com.countriesexplorer.data.local.CachedCountryEntity
+import com.countriesexplorer.data.local.CacheMetadataEntity
+import com.countriesexplorer.data.preferences.AppSettings
+import com.countriesexplorer.data.preferences.AppSettingsRepository
+import com.countriesexplorer.testdoubles.FakeCacheMetadataDao
+import com.countriesexplorer.testdoubles.FakeCountryCacheDao
+import com.countriesexplorer.testdoubles.FakeVisitHistoryDao
+import com.countriesexplorer.util.NetworkMonitor
+import io.mockk.coEvery
+import io.mockk.every
+import io.mockk.mockk
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Before
@@ -19,10 +31,20 @@ import java.io.IOException
 class CountriesRepositoryTest {
 
     private val server = MockWebServer()
+    private val countryCacheDao = FakeCountryCacheDao()
+    private val cacheMetadataDao = FakeCacheMetadataDao()
+    private val visitHistoryDao = FakeVisitHistoryDao()
+    private val visitHistoryRepository = VisitHistoryRepository(visitHistoryDao)
+    private val appSettingsRepository = mockk<AppSettingsRepository>()
+    private val networkMonitor = mockk<NetworkMonitor>()
 
     @Before
     fun setup() {
         server.start()
+        every { networkMonitor.isConnected } returns true
+        every { networkMonitor.isOnWifi } returns true
+        every { networkMonitor.shouldBlockSync(any()) } returns false
+        coEvery { appSettingsRepository.currentSettings() } returns AppSettings()
     }
 
     @After
@@ -36,7 +58,14 @@ class CountriesRepositoryTest {
             .addConverterFactory(GsonConverterFactory.create())
             .build()
         val api = retrofit.create(CountriesApi::class.java)
-        return CountriesRepository(api)
+        return CountriesRepository(
+            api = api,
+            countryCacheDao = countryCacheDao,
+            cacheMetadataDao = cacheMetadataDao,
+            appSettingsRepository = appSettingsRepository,
+            networkMonitor = networkMonitor,
+            visitHistoryRepository = visitHistoryRepository
+        )
     }
 
     @Test
@@ -47,9 +76,9 @@ class CountriesRepositoryTest {
                 .setResponseCode(200)
                 .addHeader("Content-Type", "application/json")
         )
-        val repo = repository()
-        val country = repo.getCountryByCode("AP")
-        assertEquals("ApiLand", country.displayName)
+        val result = repository().getCountryByCode("AP")
+        assertEquals("ApiLand", result.country.displayName)
+        assertEquals(1, visitHistoryRepository.getRecentVisits().first().size)
     }
 
     @Test
@@ -69,18 +98,7 @@ class CountriesRepositoryTest {
     }
 
     @Test
-    fun getCountryByCode_apiError_throws() = runBlocking {
-        server.enqueue(MockResponse().setResponseCode(500))
-        try {
-            repository().getCountryByCode("XX")
-            fail("Expected API error")
-        } catch (_: Exception) {
-            // expected
-        }
-    }
-
-    @Test
-    fun getAllCountries_mergesRegionResponses() = runBlocking {
+    fun getAllCountries_mergesRegionResponsesAndPersistsCache() = runBlocking {
         repeat(5) {
             server.enqueue(
                 MockResponse()
@@ -89,32 +107,51 @@ class CountriesRepositoryTest {
                     .addHeader("Content-Type", "application/json")
             )
         }
-        val countries = repository().getAllCountries()
-        assertEquals(1, countries.size)
-        assertEquals("ApiLand", countries.first().displayName)
+        val result = repository().getAllCountries()
+        assertEquals(1, result.countries.size)
+        assertEquals("ApiLand", result.countries.first().displayName)
+        assertEquals(1, countryCacheDao.count())
+        assertEquals(CacheMetadataEntity.STATUS_SUCCESS, cacheMetadataDao.get()?.lastSyncStatus)
     }
 
     @Test
-    fun getAllCountries_regionFailure_throws() = runBlocking {
+    fun getAllCountries_offline_returnsCachedData() = runBlocking {
+        val cached = CachedCountryEntity.fromCountry(TestFixtures.country("Cached", "CA"))
+        countryCacheDao.insertAll(listOf(cached))
+        cacheMetadataDao.upsert(
+            CacheMetadataEntity(lastFullSyncAt = System.currentTimeMillis())
+        )
+        every { networkMonitor.isConnected } returns false
+
+        val result = repository().getAllCountries()
+        assertEquals(1, result.countries.size)
+        assertTrue(result.isOffline)
+        assertFalse(result.isStale)
+    }
+
+    @Test
+    fun getAllCountries_regionFailure_withCache_returnsStaleCache() = runBlocking {
+        val cached = CachedCountryEntity.fromCountry(TestFixtures.country("Cached", "CA"))
+        countryCacheDao.insertAll(listOf(cached))
         repeat(5) {
             server.enqueue(MockResponse().setResponseCode(500))
         }
-        try {
-            repository().getAllCountries()
-            fail("Expected region load failure")
-        } catch (e: IOException) {
-            assertTrue(e.message!!.contains("регион"))
-        }
+        val result = repository().getAllCountries(forceRefresh = true)
+        assertEquals(1, result.countries.size)
+        assertTrue(result.isStale)
     }
 
     @Test
-    fun searchCountries_apiError_withoutCache_throws() = runBlocking {
-        server.enqueue(MockResponse().setResponseCode(500))
-        try {
-            repository().searchCountries("query")
-            fail("Expected search API error")
-        } catch (_: Exception) {
-            // expected
-        }
+    fun searchCountries_filtersLocalCacheWithoutNetwork() = runBlocking {
+        val cached = CachedCountryEntity.fromCountry(TestFixtures.country("Finland", "FI"))
+        countryCacheDao.insertAll(listOf(cached))
+        cacheMetadataDao.upsert(
+            CacheMetadataEntity(lastFullSyncAt = System.currentTimeMillis())
+        )
+        every { networkMonitor.isConnected } returns false
+
+        val result = repository().searchCountries("Fin")
+        assertEquals(1, result.countries.size)
+        assertFalse(result.countries.first().displayName.isBlank())
     }
 }

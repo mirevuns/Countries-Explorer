@@ -33,4 +33,22 @@
     <string name="no_data">Нет данных</string>
     <string name="area_sq_km">%1$.2f км²</string>
     <string name="sort_label">Сортировка</string>
+    <string name="settings">Настройки</string>
+    <string name="recent">Недавние</string>
+    <string name="clear_history">Очистить</string>
+    <string name="no_recent_visits">Вы ещё не открывали страны</string>
+    <string name="cache_ttl_label">Срок жизни кэша (часы)</string>
+    <string name="cache_ttl_value">TTL: %1$d ч</string>
+    <string name="auto_refresh">Автообновление кэша</string>
+    <string name="wifi_only_sync">Синхронизация только по Wi-Fi</string>
+    <string name="preload_on_wifi">Предзагрузка только по Wi-Fi</string>
+    <string name="sync_now">Синхронизировать</string>
+    <string name="preload_now">Предзагрузить офлайн</string>
+    <string name="offline_cache_banner">Офлайн-режим: показаны сохранённые данные</string>
+    <string name="stale_cache_banner">Данные могут быть устаревшими. Нажмите «Обновить».</string>
+    <string name="offline_detail_banner">Офлайн: детали из локального кэша</string>
+    <string name="country_note">Личная заметка</string>
+    <string name="country_note_hint">Ваши заметки о стране…</string>
+    <string name="save_note">Сохранить заметку</string>
+    <string name="delete_note">Удалить</string>
 </resources>

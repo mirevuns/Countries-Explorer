@@ -6,6 +6,11 @@ sealed class UiState<out T> {
         val message: String,
         val retryable: Boolean = true
     ) : UiState<Nothing>()
-    data class Success<T>(val data: T) : UiState<T>()
+    data class Success<T>(
+        val data: T,
+        val isStale: Boolean = false,
+        val lastUpdatedAt: Long? = null,
+        val isOffline: Boolean = false
+    ) : UiState<T>()
     object Empty : UiState<Nothing>()
 }

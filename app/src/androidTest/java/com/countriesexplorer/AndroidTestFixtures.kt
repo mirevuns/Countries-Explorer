@@ -7,8 +7,8 @@ import com.countriesexplorer.data.model.Name
 
 object AndroidTestFixtures {
 
-    fun country(commonName: String = "RoomLand", cca2: String = "RL"): Country = Country(
-        name = Name(common = commonName, official = commonName, nativeName = null),
+    fun country(name: String = "RoomLand", cca2: String = "RL"): Country = Country(
+        name = Name(common = name, official = name, nativeName = null),
         cca2 = cca2,
         cca3 = "${cca2}A",
         capital = listOf("C"),
@@ -21,5 +21,11 @@ object AndroidTestFixtures {
         currencies = mapOf("X" to Currency("X", "x")),
         timezones = null,
         borders = null
+    )
+
+    fun testland(): Country = country("Testland", "TL").copy(
+        capital = listOf("Capital City"),
+        subregion = "North",
+        languages = mapOf("eng" to "English")
     )
 }

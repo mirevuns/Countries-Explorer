@@ -28,6 +28,10 @@ import com.countriesexplorer.util.CountryCodeHelper
 fun CountryDetailScreen(
     countryCode: String,
     uiState: UiState<Country>,
+    noteDraft: String,
+    onNoteChanged: (String) -> Unit,
+    onSaveNote: () -> Unit,
+    onDeleteNote: () -> Unit,
     onNavigateBack: () -> Unit,
     onRetry: () -> Unit,
     isFavorite: Boolean,
@@ -132,6 +136,22 @@ fun CountryDetailScreen(
                         .verticalScroll(rememberScrollState())
                         .padding(16.dp)
                 ) {
+                    if (state.isOffline) {
+                        Text(
+                            text = stringResource(R.string.offline_detail_banner),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                    } else if (state.isStale) {
+                        Text(
+                            text = stringResource(R.string.stale_cache_banner),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+
                     AsyncImage(
                         model = ImageRequest.Builder(LocalContext.current)
                             .data(CountryCodeHelper.getFlagUrl(country))
@@ -211,6 +231,37 @@ fun CountryDetailScreen(
                                 label = stringResource(R.string.borders),
                                 value = borders.joinToString()
                             )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = stringResource(R.string.country_note),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    OutlinedTextField(
+                        value = noteDraft,
+                        onValueChange = onNoteChanged,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 8.dp),
+                        placeholder = { Text(stringResource(R.string.country_note_hint)) },
+                        minLines = 3
+                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Button(onClick = onSaveNote) {
+                            Text(stringResource(R.string.save_note))
+                        }
+                        if (noteDraft.isNotBlank()) {
+                            TextButton(onClick = onDeleteNote) {
+                                Text(stringResource(R.string.delete_note))
+                            }
                         }
                     }
                 }

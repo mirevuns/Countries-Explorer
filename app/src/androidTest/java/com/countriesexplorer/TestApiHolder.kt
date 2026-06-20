@@ -25,27 +25,30 @@ object TestApiHolder {
 
     fun ensureStarted() {
         synchronized(this) {
-            if (!started) {
-                server.dispatcher = object : Dispatcher() {
-                    override fun dispatch(request: RecordedRequest): MockResponse {
-                        val path = request.path ?: return notFound()
-                        if (path.contains("/code") && alphaErrorsRemaining.get() > 0) {
-                            alphaErrorsRemaining.decrementAndGet()
-                            return MockResponse()
-                                .setResponseCode(500)
-                                .setBody("{}")
-                                .addHeader("Content-Type", "application/json")
-                        }
-                        return when {
-                            path.contains("/region/") -> ok(TestResponses.regionCountriesJsonArray())
-                            path.contains("/name") -> ok(TestResponses.searchCountriesJsonArray())
-                            path.contains("/code") -> ok(TestResponses.singleCountryJsonResponse())
-                            else -> notFound()
-                        }
-                    }
+            if (started) return
+            installDispatcher()
+            server.start()
+            started = true
+        }
+    }
+
+    private fun installDispatcher() {
+        server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                val path = request.path ?: return notFound()
+                if (path.contains("/code") && alphaErrorsRemaining.get() > 0) {
+                    alphaErrorsRemaining.decrementAndGet()
+                    return MockResponse()
+                        .setResponseCode(500)
+                        .setBody("{}")
+                        .addHeader("Content-Type", "application/json")
                 }
-                server.start()
-                started = true
+                return when {
+                    path.contains("/region/") -> ok(TestResponses.regionCountriesJsonArray())
+                    path.contains("/name") -> ok(TestResponses.searchCountriesJsonArray())
+                    path.contains("/code") -> ok(TestResponses.singleCountryJsonResponse())
+                    else -> notFound()
+                }
             }
         }
     }

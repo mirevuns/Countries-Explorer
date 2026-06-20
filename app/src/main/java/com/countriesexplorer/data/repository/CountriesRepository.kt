@@ -3,15 +3,19 @@ package com.countriesexplorer.data.repository
 import com.countriesexplorer.data.api.CountriesApi
 import com.countriesexplorer.data.api.dto.V5CountryDto
 import com.countriesexplorer.data.api.dto.countries
+import com.countriesexplorer.data.local.CacheMetadataEntity
+import com.countriesexplorer.data.local.CachedCountryEntity
+import com.countriesexplorer.data.local.CacheMetadataDao
+import com.countriesexplorer.data.local.CountryCacheDao
 import com.countriesexplorer.data.model.Country
 import com.countriesexplorer.data.model.Currency
 import com.countriesexplorer.data.model.Flags
 import com.countriesexplorer.data.model.Name
+import com.countriesexplorer.data.preferences.AppSettingsRepository
+import com.countriesexplorer.util.NetworkMonitor
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import retrofit2.HttpException
 import java.io.IOException
 import javax.inject.Inject
@@ -19,31 +23,208 @@ import javax.inject.Singleton
 
 @Singleton
 class CountriesRepository @Inject constructor(
-    private val api: CountriesApi
+    private val api: CountriesApi,
+    private val countryCacheDao: CountryCacheDao,
+    private val cacheMetadataDao: CacheMetadataDao,
+    private val appSettingsRepository: AppSettingsRepository,
+    private val networkMonitor: NetworkMonitor,
+    private val visitHistoryRepository: VisitHistoryRepository
 ) {
-    private val cacheMutex = Mutex()
-    private var cachedCountries: List<Country>? = null
-
     private val regions = listOf("Africa", "Americas", "Asia", "Europe", "Oceania")
 
-    suspend fun getAllCountries(): List<Country> {
-        return try {
-            val countries = loadAllCountriesByRegions()
-            cacheMutex.withLock { cachedCountries = countries }
-            countries
-        } catch (e: Exception) {
-            if (e is HttpException && e.code() == 401) {
-                throw IOException(
-                    "REST Countries API: требуется API-ключ. Добавь REST_COUNTRIES_API_KEY в local.properties и пересобери приложение.",
-                    e
+    suspend fun getAllCountries(forceRefresh: Boolean = false): CountriesLoadResult {
+        val settings = appSettingsRepository.currentSettings()
+        val metadata = cacheMetadataDao.get()
+        val lastSyncAt = metadata?.lastFullSyncAt
+        val localCountries = loadCountriesFromCache()
+        val isStale = CachePolicy.isStale(lastSyncAt, settings.cacheTtlHours)
+
+        if (!networkMonitor.isConnected) {
+            if (localCountries.isNotEmpty()) {
+                return CountriesLoadResult(
+                    countries = localCountries,
+                    isStale = isStale,
+                    lastSyncAt = lastSyncAt,
+                    isOffline = true
                 )
             }
-            val cached = cacheMutex.withLock { cachedCountries }
-            if (cached != null && cached.isNotEmpty()) {
-                return cached
+            throw IOException("Нет подключения к интернету. Проверьте сеть и попробуйте снова.")
+        }
+
+        if (localCountries.isNotEmpty() && !forceRefresh && !isStale) {
+            return CountriesLoadResult(
+                countries = localCountries,
+                isStale = false,
+                lastSyncAt = lastSyncAt,
+                isOffline = false
+            )
+        }
+
+        if (networkMonitor.shouldBlockSync(settings.wifiOnlySync)) {
+            if (localCountries.isNotEmpty()) {
+                return CountriesLoadResult(
+                    countries = localCountries,
+                    isStale = isStale,
+                    lastSyncAt = lastSyncAt,
+                    isOffline = false
+                )
+            }
+            throw IOException("Синхронизация доступна только по Wi-Fi. Подключитесь к Wi-Fi или отключите ограничение в настройках.")
+        }
+
+        return try {
+            val fresh = fetchFromNetworkAndPersist()
+            CountriesLoadResult(
+                countries = fresh,
+                isStale = false,
+                lastSyncAt = System.currentTimeMillis(),
+                isOffline = false
+            )
+        } catch (e: Exception) {
+            handleApiException(e)
+            if (localCountries.isNotEmpty()) {
+                return CountriesLoadResult(
+                    countries = localCountries,
+                    isStale = true,
+                    lastSyncAt = lastSyncAt,
+                    isOffline = !networkMonitor.isConnected
+                )
             }
             throw e
         }
+    }
+
+    suspend fun syncCacheIfNeeded(force: Boolean = false): SyncResult {
+        val settings = appSettingsRepository.currentSettings()
+        if (!settings.autoRefreshEnabled && !force) {
+            return SyncResult.Skipped("Автообновление отключено")
+        }
+        if (!networkMonitor.isConnected) {
+            return SyncResult.Skipped("Нет сети")
+        }
+        if (networkMonitor.shouldBlockSync(settings.wifiOnlySync)) {
+            return SyncResult.Skipped("Только Wi-Fi")
+        }
+
+        val metadata = cacheMetadataDao.get()
+        val isStale = CachePolicy.isStale(metadata?.lastFullSyncAt, settings.cacheTtlHours)
+        if (!force && !isStale && countryCacheDao.count() > 0) {
+            return SyncResult.Skipped("Кэш актуален")
+        }
+
+        return try {
+            fetchFromNetworkAndPersist()
+            SyncResult.Success
+        } catch (e: Exception) {
+            handleApiException(e)
+            cacheMetadataDao.upsert(
+                CacheMetadataEntity(
+                    lastFullSyncAt = metadata?.lastFullSyncAt,
+                    lastSyncStatus = CacheMetadataEntity.STATUS_FAILED
+                )
+            )
+            SyncResult.Failed(e.message ?: "Ошибка синхронизации")
+        }
+    }
+
+    suspend fun preloadForOffline(): SyncResult {
+        val settings = appSettingsRepository.currentSettings()
+        if (!networkMonitor.isConnected) {
+            return SyncResult.Skipped("Нет сети")
+        }
+        if (settings.preloadOnWifi && !networkMonitor.isOnWifi) {
+            return SyncResult.Skipped("Предзагрузка доступна только по Wi-Fi")
+        }
+        return syncCacheIfNeeded(force = true)
+    }
+
+    suspend fun searchCountries(query: String): CountriesLoadResult {
+        if (query.isBlank()) {
+            return getAllCountries()
+        }
+
+        val allResult = getAllCountries()
+        val filtered = allResult.countries.filterByQuery(query)
+        if (filtered.isNotEmpty()) {
+            return allResult.copy(countries = filtered)
+        }
+
+        if (!networkMonitor.isConnected) {
+            return allResult.copy(countries = emptyList())
+        }
+
+        return try {
+            val remote = fetchAllCountries(query).map { it.toCountry() }
+            persistCountries(remote)
+            CountriesLoadResult(
+                countries = remote,
+                isStale = false,
+                lastSyncAt = System.currentTimeMillis(),
+                isOffline = false
+            )
+        } catch (e: Exception) {
+            handleApiException(e)
+            throw e
+        }
+    }
+
+    suspend fun getCountryByCode(code: String, recordVisit: Boolean = true): CountryLoadResult {
+        val cached = countryCacheDao.getByCode(code)?.country
+
+        if (!networkMonitor.isConnected) {
+            if (cached != null) {
+                if (recordVisit) visitHistoryRepository.recordVisit(cached)
+                return CountryLoadResult(cached, isStale = true, isOffline = true)
+            }
+            throw IOException("Нет подключения к интернету. Проверьте сеть и попробуйте снова.")
+        }
+
+        if (networkMonitor.shouldBlockSync(appSettingsRepository.currentSettings().wifiOnlySync) && cached != null) {
+            if (recordVisit) visitHistoryRepository.recordVisit(cached)
+            return CountryLoadResult(cached, isStale = true, isOffline = false)
+        }
+
+        return try {
+            val country = fetchCountryFromNetwork(code)
+            persistCountries(listOf(country))
+            if (recordVisit) visitHistoryRepository.recordVisit(country)
+            CountryLoadResult(country, isStale = false, isOffline = false)
+        } catch (e: CountryNotFoundException) {
+            throw e
+        } catch (e: Exception) {
+            handleApiException(e)
+            if (cached != null) {
+                if (recordVisit) visitHistoryRepository.recordVisit(cached)
+                return CountryLoadResult(cached, isStale = true, isOffline = false)
+            }
+            throw e
+        }
+    }
+
+    private suspend fun loadCountriesFromCache(): List<Country> {
+        return countryCacheDao.getAll()
+            .map { it.country }
+            .distinctBy { it.countryCode }
+            .filter { it.countryCode.isNotBlank() }
+            .sortedBy { it.displayName.lowercase() }
+    }
+
+    private suspend fun fetchFromNetworkAndPersist(): List<Country> {
+        val countries = loadAllCountriesByRegions()
+        persistCountries(countries)
+        return countries
+    }
+
+    private suspend fun persistCountries(countries: List<Country>) {
+        val now = System.currentTimeMillis()
+        val entities = countries.map { CachedCountryEntity.fromCountry(it, now) }
+        countryCacheDao.insertAll(entities)
+        cacheMetadataDao.upsert(
+            CacheMetadataEntity(
+                lastFullSyncAt = now,
+                lastSyncStatus = CacheMetadataEntity.STATUS_SUCCESS
+            )
+        )
     }
 
     private suspend fun loadAllCountriesByRegions(): List<Country> = coroutineScope {
@@ -76,6 +257,17 @@ class CountriesRepository @Inject constructor(
             throw IOException("Нет подключения к интернету. Проверьте сеть и попробуйте снова.")
         }
         countries
+    }
+
+    private suspend fun fetchCountryFromNetwork(code: String): Country {
+        return api.getCountryByCode(code)
+            .countries()
+            .firstOrNull { country ->
+                country.codes?.alpha2.equals(code, ignoreCase = true) ||
+                    country.codes?.alpha3.equals(code, ignoreCase = true)
+            }
+            ?.toCountry()
+            ?: throw CountryNotFoundException(code)
     }
 
     private suspend fun fetchAllCountriesInRegion(region: String): List<V5CountryDto> {
@@ -116,34 +308,6 @@ class CountriesRepository @Inject constructor(
         return allCountries
     }
 
-    suspend fun searchCountries(query: String): List<Country> {
-        if (query.isBlank()) {
-            return getAllCountries()
-        }
-        val cached = cacheMutex.withLock { cachedCountries }
-        if (cached != null) {
-            val filtered = cached.filterByQuery(query)
-            if (filtered.isNotEmpty()) return filtered
-        }
-        return try {
-            fetchAllCountries(query).map { it.toCountry() }
-        } catch (e: HttpException) {
-            if (e.code() == 401) {
-                throw IOException(
-                    "REST Countries API: требуется API-ключ. Добавь REST_COUNTRIES_API_KEY в local.properties и пересобери приложение.",
-                    e
-                )
-            }
-            throw e
-        } catch (e: Exception) {
-            val offline = cached?.filterByQuery(query)
-            if (!offline.isNullOrEmpty()) {
-                return offline
-            }
-            throw e
-        }
-    }
-
     private fun List<Country>.filterByQuery(query: String) = filter { country ->
         val name = country.name.common ?: country.name.official ?: ""
         val official = country.name.official ?: ""
@@ -155,29 +319,10 @@ class CountriesRepository @Inject constructor(
             languages.contains(query, ignoreCase = true)
     }
 
-    suspend fun getCountryByCode(code: String): Country {
-        return try {
-            api.getCountryByCode(code)
-                .countries()
-                .firstOrNull { country ->
-                    country.codes?.alpha2.equals(code, ignoreCase = true) ||
-                        country.codes?.alpha3.equals(code, ignoreCase = true)
-                }
-                ?.toCountry()
-                ?: throw CountryNotFoundException(code)
-        } catch (e: CountryNotFoundException) {
-            throw e
-        } catch (e: HttpException) {
-            if (e.code() == 401) {
-                throw IOException(
-                    "REST Countries API: требуется API-ключ. Добавь REST_COUNTRIES_API_KEY в local.properties и пересобери приложение.",
-                    e
-                )
-            }
-            throw e
-        } catch (e: IOException) {
+    private fun handleApiException(e: Exception) {
+        if (e is HttpException && e.code() == 401) {
             throw IOException(
-                "Нет подключения к интернету. Проверьте сеть и попробуйте снова.",
+                "REST Countries API: требуется API-ключ. Добавь REST_COUNTRIES_API_KEY в local.properties и пересобери приложение.",
                 e
             )
         }
@@ -217,4 +362,10 @@ class CountriesRepository @Inject constructor(
             borders = borders
         )
     }
+}
+
+sealed class SyncResult {
+    data object Success : SyncResult()
+    data class Skipped(val reason: String) : SyncResult()
+    data class Failed(val message: String) : SyncResult()
 }

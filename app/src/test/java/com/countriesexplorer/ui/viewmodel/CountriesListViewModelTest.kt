@@ -6,6 +6,7 @@ import com.countriesexplorer.data.local.FavoriteEntity
 import com.countriesexplorer.data.model.Country
 import com.countriesexplorer.data.preferences.ListPreferences
 import com.countriesexplorer.data.preferences.ListPreferencesRepository
+import com.countriesexplorer.data.repository.CountriesLoadResult
 import com.countriesexplorer.data.repository.CountriesRepository
 import com.countriesexplorer.testdoubles.FakeFavoriteDao
 import com.countriesexplorer.ui.state.UiState
@@ -54,10 +55,21 @@ class CountriesListViewModelTest {
             }
         }
 
+    private fun loadResult(
+        list: List<Country>,
+        isStale: Boolean = false,
+        isOffline: Boolean = false
+    ) = CountriesLoadResult(
+        countries = list,
+        isStale = isStale,
+        lastSyncAt = null,
+        isOffline = isOffline
+    )
+
     private fun repoWithGetAll(list: List<Country>): CountriesRepository =
         mockk {
-            coEvery { getAllCountries() } returns list
-            coEvery { searchCountries(any()) } returns emptyList()
+            coEvery { getAllCountries(any()) } returns loadResult(list)
+            coEvery { searchCountries(any()) } returns loadResult(emptyList())
         }
 
     @Test
@@ -79,12 +91,12 @@ class CountriesListViewModelTest {
         val c = TestFixtures.country()
         var call = 0
         val repo = mockk<CountriesRepository> {
-            coEvery { getAllCountries() } coAnswers {
+            coEvery { getAllCountries(any()) } coAnswers {
                 call++
                 if (call == 1) throw IOException("network")
-                listOf(c)
+                loadResult(listOf(c))
             }
-            coEvery { searchCountries(any()) } returns emptyList()
+            coEvery { searchCountries(any()) } returns loadResult(emptyList())
         }
         val vm = CountriesListViewModel(repo, FakeFavoriteDao(), prefsRepo(MutableStateFlow(ListPreferences())))
         withUiStateActive(vm) {
@@ -103,11 +115,11 @@ class CountriesListViewModelTest {
         val c = TestFixtures.country("Found", "FD")
         var searchCalls = 0
         val repo = mockk<CountriesRepository> {
-            coEvery { getAllCountries() } returns listOf(TestFixtures.country())
+            coEvery { getAllCountries(any()) } returns loadResult(listOf(TestFixtures.country()))
             coEvery { searchCountries(any()) } coAnswers {
                 searchCalls++
                 if (searchCalls == 1) throw IOException("search failed")
-                listOf(c)
+                loadResult(listOf(c))
             }
         }
         val vm = CountriesListViewModel(repo, FakeFavoriteDao(), prefsRepo(MutableStateFlow(ListPreferences())))
@@ -139,8 +151,8 @@ class CountriesListViewModelTest {
     @Test
     fun `search with no matches yields Empty not Success`() = runTest(mainDispatcherRule.dispatcher) {
         val repo = mockk<CountriesRepository> {
-            coEvery { getAllCountries() } returns listOf(TestFixtures.country())
-            coEvery { searchCountries(any()) } returns emptyList()
+            coEvery { getAllCountries(any()) } returns loadResult(listOf(TestFixtures.country()))
+            coEvery { searchCountries(any()) } returns loadResult(emptyList())
         }
         val vm = CountriesListViewModel(repo, FakeFavoriteDao(), prefsRepo(MutableStateFlow(ListPreferences())))
         withUiStateActive(vm) {
@@ -155,10 +167,10 @@ class CountriesListViewModelTest {
     fun `debounce - only last search query triggers search after wait`() = runTest(mainDispatcherRule.dispatcher) {
         var searchCalls = 0
         val repo = mockk<CountriesRepository> {
-            coEvery { getAllCountries() } returns listOf(TestFixtures.country("Base", "BS"))
+            coEvery { getAllCountries(any()) } returns loadResult(listOf(TestFixtures.country("Base", "BS")))
             coEvery { searchCountries(any()) } coAnswers {
                 searchCalls++
-                listOf(TestFixtures.country("Found", "FD"))
+                loadResult(listOf(TestFixtures.country("Found", "FD")))
             }
         }
         val vm = CountriesListViewModel(repo, FakeFavoriteDao(), prefsRepo(MutableStateFlow(ListPreferences())))
@@ -178,8 +190,8 @@ class CountriesListViewModelTest {
         val alpha = TestFixtures.country("Alpha", "AA")
         val beta = TestFixtures.country("Beta", "BB")
         val repo = mockk<CountriesRepository> {
-            coEvery { getAllCountries() } returns listOf(alpha, beta)
-            coEvery { searchCountries(any()) } returns emptyList()
+            coEvery { getAllCountries(any()) } returns loadResult(listOf(alpha, beta))
+            coEvery { searchCountries(any()) } returns loadResult(emptyList())
         }
         val dao = FakeFavoriteDao()
         dao.insert(FavoriteEntity.fromCountry(alpha))
@@ -198,7 +210,7 @@ class CountriesListViewModelTest {
             assertEquals(1, (s1 as UiState.Success).data.size)
             assertEquals("Alpha", s1.data.first().displayName)
 
-            coVerify(exactly = 1) { repo.getAllCountries() }
+            coVerify(exactly = 1) { repo.getAllCountries(any()) }
         }
     }
 }

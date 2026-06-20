@@ -118,6 +118,11 @@ dependencies {
     // DataStore
     implementation("androidx.datastore:datastore-preferences:1.0.0")
 
+    // WorkManager
+    implementation("androidx.work:work-runtime-ktx:2.9.0")
+    implementation("androidx.hilt:hilt-work:1.1.0")
+    kapt("androidx.hilt:hilt-compiler:1.1.0")
+
     // Room
     implementation("androidx.room:room-runtime:2.6.1")
     implementation("androidx.room:room-ktx:2.6.1")
@@ -139,6 +144,7 @@ dependencies {
     androidTestImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
     androidTestImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
     androidTestImplementation("com.google.dagger:hilt-android-testing:2.48.1")
+    androidTestImplementation("androidx.work:work-testing:2.9.0")
     kaptAndroidTest("com.google.dagger:hilt-android-compiler:2.48.1")
 
     debugImplementation("androidx.compose.ui:ui-tooling")

@@ -3,14 +3,18 @@ package com.countriesexplorer.ui.screen
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -42,6 +46,8 @@ fun CountriesListScreen(
     onSortByNameChange: (Boolean) -> Unit,
     onNavigateToDetail: (String) -> Unit,
     onNavigateToFavorites: () -> Unit,
+    onNavigateToRecent: () -> Unit,
+    onNavigateToSettings: () -> Unit,
     favoritesSet: Set<String>,
     onFavoriteToggle: (String, Country) -> Unit
 ) {
@@ -50,6 +56,18 @@ fun CountriesListScreen(
             TopAppBar(
                 title = { Text(stringResource(R.string.countries_list)) },
                 actions = {
+                    IconButton(onClick = onNavigateToRecent) {
+                        Icon(
+                            imageVector = Icons.Default.History,
+                            contentDescription = stringResource(R.string.recent)
+                        )
+                    }
+                    IconButton(onClick = onNavigateToSettings) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = stringResource(R.string.settings)
+                        )
+                    }
                     IconButton(onClick = onNavigateToFavorites) {
                         Icon(
                             imageVector = Icons.Default.Favorite,
@@ -140,6 +158,25 @@ fun CountriesListScreen(
                 }
             }
 
+            val cacheBanner = when (val state = uiState) {
+                is UiState.Success -> {
+                    when {
+                        state.isOffline -> stringResource(R.string.offline_cache_banner)
+                        state.isStale -> stringResource(R.string.stale_cache_banner)
+                        else -> null
+                    }
+                }
+                else -> null
+            }
+            cacheBanner?.let { banner ->
+                Text(
+                    text = banner,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+
             when (val state = uiState) {
                 is UiState.Loading -> {
                     Box(
@@ -196,7 +233,12 @@ fun CountriesListScreen(
                     }
                 }
                 is UiState.Success -> {
+                    val listState = rememberLazyListState()
+                    LaunchedEffect(listPrefs.sortByName, listPrefs.showFavoritesOnly) {
+                        listState.animateScrollToItem(0)
+                    }
                     LazyColumn(
+                        state = listState,
                         modifier = Modifier
                             .fillMaxSize()
                             .weight(1f, fill = true),
