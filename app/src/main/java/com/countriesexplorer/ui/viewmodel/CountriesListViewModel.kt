@@ -21,7 +21,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
@@ -52,22 +51,18 @@ class CountriesListViewModel @Inject constructor(
         onBufferOverflow = BufferOverflow.DROP_OLDEST
     )
 
-    init {
-        viewModelScope.launch {
-            val favoriteCodes = favoriteRepository.favoriteCodes.first()
-            val prefs = listPreferencesRepository.listPreferences.first()
-            if (prefs.showFavoritesOnly && favoriteCodes.isEmpty()) {
-                listPreferencesRepository.setShowFavoritesOnly(false)
-            }
-        }
-    }
+    private val _showFavoritesOnly = MutableStateFlow(false)
 
-    val listPreferences: StateFlow<ListPreferences> = listPreferencesRepository.listPreferences
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = ListPreferences()
-        )
+    val listPreferences: StateFlow<ListPreferences> = combine(
+        listPreferencesRepository.listPreferences,
+        _showFavoritesOnly
+    ) { prefs, showFavoritesOnly ->
+        prefs.copy(showFavoritesOnly = showFavoritesOnly)
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = ListPreferences()
+    )
 
     val activeProfileName: StateFlow<String> = profileRepository.activeProfile
         .map { it?.name ?: ProfileRepository.DEFAULT_PROFILE_NAME }
@@ -127,9 +122,10 @@ class CountriesListViewModel @Inject constructor(
     val uiState: StateFlow<UiState<List<Country>>> = combine(
         remoteAfterSearch,
         listPreferencesRepository.listPreferences,
+        _showFavoritesOnly,
         favoriteRepository.favoriteCodes
-    ) { state, prefs, favoriteCodes ->
-        applyListPreferences(state, prefs, favoriteCodes)
+    ) { state, prefs, showFavoritesOnly, favoriteCodes ->
+        applyListPreferences(state, prefs.copy(showFavoritesOnly = showFavoritesOnly), favoriteCodes)
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
@@ -173,9 +169,7 @@ class CountriesListViewModel @Inject constructor(
     }
 
     fun setShowFavoritesOnly(show: Boolean) {
-        viewModelScope.launch {
-            listPreferencesRepository.setShowFavoritesOnly(show)
-        }
+        _showFavoritesOnly.value = show
     }
 
     fun setSortByName(byName: Boolean) {

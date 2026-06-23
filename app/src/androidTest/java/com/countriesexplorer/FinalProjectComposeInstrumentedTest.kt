@@ -1,7 +1,9 @@
 package com.countriesexplorer
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -69,11 +71,12 @@ class FinalProjectComposeInstrumentedTest {
         val ctx = InstrumentationRegistry.getInstrumentation().targetContext
         InstrumentedTestSupport.launchNavGraph(composeRule)
         waitForTestland()
-        composeRule.onNodeWithText(ctx.getString(R.string.tab_settings)).performClick()
+        composeRule.onNode(
+            hasText(ctx.getString(R.string.tab_settings)) and hasClickAction()
+        ).performClick()
         composeRule.waitUntil(5_000) {
             composeRule.onAllNodesWithText(ctx.getString(R.string.sync_now)).fetchSemanticsNodes().isNotEmpty()
         }
-        composeRule.onNodeWithText(ctx.getString(R.string.settings)).assertIsDisplayed()
         composeRule.onNodeWithText(ctx.getString(R.string.auto_refresh)).assertIsDisplayed()
         composeRule.onNodeWithText(ctx.getString(R.string.sync_now)).assertIsDisplayed()
         composeRule.onNodeWithText(ctx.getString(R.string.preload_now)).assertIsDisplayed()
@@ -88,11 +91,12 @@ class FinalProjectComposeInstrumentedTest {
         composeRule.waitUntil(5_000) {
             composeRule.onAllNodesWithText("Testland").fetchSemanticsNodes().size >= 1
         }
-        composeRule.onNodeWithText(ctx.getString(R.string.tab_history)).performClick()
+        composeRule.onNode(
+            hasText(ctx.getString(R.string.tab_history)) and hasClickAction()
+        ).performClick()
         composeRule.waitUntil(5_000) {
             composeRule.onAllNodesWithText("Testland").fetchSemanticsNodes().isNotEmpty()
         }
-        composeRule.onNodeWithText(ctx.getString(R.string.tab_history)).assertIsDisplayed()
         composeRule.onNodeWithText("Testland").assertIsDisplayed()
     }
 

@@ -50,6 +50,8 @@ object TestDataStoreModule {
 
     private val appSettingsStoreId = AtomicInteger(0)
 
+    private val profileStoreId = AtomicInteger(0)
+
 
 
     @Provides
@@ -103,6 +105,34 @@ object TestDataStoreModule {
             produceFile = {
 
                 context.preferencesDataStoreFile("test_app_settings_$id")
+
+            }
+
+        )
+
+    }
+
+    @Provides
+
+    @Singleton
+
+    @ProfilePreferencesDataStore
+
+    fun provideProfilePreferencesDataStore(
+
+        @ApplicationContext context: Context
+
+    ): DataStore<Preferences> {
+
+        val id = profileStoreId.incrementAndGet()
+
+        return PreferenceDataStoreFactory.create(
+
+            corruptionHandler = ReplaceFileCorruptionHandler { emptyPreferences() },
+
+            produceFile = {
+
+                context.preferencesDataStoreFile("test_profile_preferences_$id")
 
             }
 

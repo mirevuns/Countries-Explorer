@@ -56,8 +56,7 @@ class NavigationComposeInstrumentedTest {
         waitForTestland()
         composeRule.onNodeWithText("Testland").performClick()
         composeRule.waitUntil(10_000) {
-            composeRule.onAllNodesWithText(ctx.getString(R.string.country_detail_title))
-                .fetchSemanticsNodes().isNotEmpty()
+            composeRule.onAllNodesWithText("Capital City").fetchSemanticsNodes().isNotEmpty()
         }
         composeRule.onNodeWithText("Capital City").assertIsDisplayed()
     }

@@ -56,7 +56,6 @@ object InstrumentedTestSupport {
 
     fun resetPreferences() = runBlocking(Dispatchers.IO) {
         val entryPoint = entryPoint()
-        entryPoint.listPreferencesRepository().setShowFavoritesOnly(false)
         entryPoint.listPreferencesRepository().setSortByName(true)
         entryPoint.appSettingsRepository().setWifiOnlySync(false)
         entryPoint.appSettingsRepository().setPreloadOnWifi(false)

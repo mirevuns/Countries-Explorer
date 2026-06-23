@@ -17,13 +17,8 @@ class ListPreferencesRepository @Inject constructor(
 
     val listPreferences: Flow<ListPreferences> = dataStore.data.map { prefs ->
         ListPreferences(
-            showFavoritesOnly = prefs[KEY_SHOW_FAVORITES_ONLY] ?: false,
             sortByName = prefs[KEY_SORT_BY_NAME] ?: true
         )
-    }
-
-    suspend fun setShowFavoritesOnly(value: Boolean) {
-        dataStore.edit { it[KEY_SHOW_FAVORITES_ONLY] = value }
     }
 
     suspend fun setSortByName(value: Boolean) {
@@ -31,7 +26,6 @@ class ListPreferencesRepository @Inject constructor(
     }
 
     companion object {
-        private val KEY_SHOW_FAVORITES_ONLY = booleanPreferencesKey("show_favorites_only")
         private val KEY_SORT_BY_NAME = booleanPreferencesKey("sort_by_name")
     }
 }

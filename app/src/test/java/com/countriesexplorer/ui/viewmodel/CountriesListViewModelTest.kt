@@ -49,9 +49,6 @@ class CountriesListViewModelTest {
     private fun prefsRepo(flow: MutableStateFlow<ListPreferences>): ListPreferencesRepository =
         mockk(relaxed = true) {
             every { listPreferences } returns flow
-            coEvery { setShowFavoritesOnly(any()) } coAnswers {
-                flow.value = flow.value.copy(showFavoritesOnly = invocation.args[0] as Boolean)
-            }
             coEvery { setSortByName(any()) } coAnswers {
                 flow.value = flow.value.copy(sortByName = invocation.args[0] as Boolean)
             }
