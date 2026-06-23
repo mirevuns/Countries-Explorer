@@ -109,35 +109,16 @@ fun CountriesListScreen(
                     onClick = { onShowFavoritesOnlyChange(!listPrefs.showFavoritesOnly) },
                     label = { Text(stringResource(R.string.filter_favorites_only)) }
                 )
-            }
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = stringResource(R.string.sort_label),
-                    style = MaterialTheme.typography.labelLarge,
-                    modifier = Modifier.padding(end = 8.dp)
+                FilterChip(
+                    selected = listPrefs.sortByName,
+                    onClick = { onSortByNameChange(true) },
+                    label = { Text(stringResource(R.string.sort_by_name)) }
                 )
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    RadioButton(
-                        selected = listPrefs.sortByName,
-                        onClick = { onSortByNameChange(true) }
-                    )
-                    Text(
-                        text = stringResource(R.string.sort_by_name),
-                        modifier = Modifier.padding(end = 12.dp)
-                    )
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    RadioButton(
-                        selected = !listPrefs.sortByName,
-                        onClick = { onSortByNameChange(false) }
-                    )
-                    Text(text = stringResource(R.string.sort_by_population))
-                }
+                FilterChip(
+                    selected = !listPrefs.sortByName,
+                    onClick = { onSortByNameChange(false) },
+                    label = { Text(stringResource(R.string.sort_by_population)) }
+                )
             }
 
             when (val state = uiState) {

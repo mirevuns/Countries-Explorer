@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
@@ -49,6 +50,16 @@ class CountriesListViewModel @Inject constructor(
         onBufferOverflow = BufferOverflow.DROP_OLDEST
     )
 
+    init {
+        viewModelScope.launch {
+            val favoriteCodes = favoriteDao.getAllFavoriteCodes().first()
+            val prefs = listPreferencesRepository.listPreferences.first()
+            if (prefs.showFavoritesOnly && favoriteCodes.isEmpty()) {
+                listPreferencesRepository.setShowFavoritesOnly(false)
+            }
+        }
+    }
+
     val listPreferences: StateFlow<ListPreferences> = listPreferencesRepository.listPreferences
         .stateIn(
             scope = viewModelScope,
@@ -64,14 +75,18 @@ class CountriesListViewModel @Inject constructor(
         query
     }
 
+    private enum class ListLoadTrigger { INITIAL, REFRESH }
+
     private val remoteListState: Flow<UiState<List<Country>>> = merge(
-        flowOf(Unit),
-        refreshSignals
-    ).flatMapLatest {
+        flowOf(ListLoadTrigger.INITIAL),
+        refreshSignals.map { ListLoadTrigger.REFRESH }
+    ).flatMapLatest { trigger ->
         flow {
             emit(UiState.Loading)
             try {
-                val countries = repository.getAllCountries()
+                val countries = repository.getAllCountries(
+                    forceRefresh = trigger == ListLoadTrigger.REFRESH
+                )
                 emit(
                     if (countries.isEmpty()) UiState.Empty
                     else UiState.Success(countries)
@@ -111,7 +126,7 @@ class CountriesListViewModel @Inject constructor(
 
     val uiState: StateFlow<UiState<List<Country>>> = combine(
         remoteAfterSearch,
-        listPreferencesRepository.listPreferences,
+        listPreferences,
         favoriteDao.getAllFavoriteCodes().map { it.toSet() }
     ) { state, prefs, favoriteCodes ->
         applyListPreferences(state, prefs, favoriteCodes)

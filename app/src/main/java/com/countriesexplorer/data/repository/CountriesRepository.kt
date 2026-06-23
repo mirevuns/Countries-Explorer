@@ -26,7 +26,7 @@ class CountriesRepository @Inject constructor(
 
     private val regions = listOf("Africa", "Americas", "Asia", "Europe", "Oceania")
 
-    suspend fun getAllCountries(): List<Country> {
+    suspend fun getAllCountries(forceRefresh: Boolean = false): List<Country> {
         return try {
             val countries = loadAllCountriesByRegions()
             cacheMutex.withLock { cachedCountries = countries }
@@ -38,9 +38,11 @@ class CountriesRepository @Inject constructor(
                     e
                 )
             }
-            val cached = cacheMutex.withLock { cachedCountries }
-            if (cached != null && cached.isNotEmpty()) {
-                return cached
+            if (!forceRefresh) {
+                val cached = cacheMutex.withLock { cachedCountries }
+                if (cached != null && cached.isNotEmpty()) {
+                    return cached
+                }
             }
             throw e
         }
