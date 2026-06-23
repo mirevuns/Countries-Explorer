@@ -2,6 +2,7 @@ package com.countriesexplorer.di
 
 import android.content.Context
 import androidx.room.Room
+import com.countriesexplorer.BuildConfig
 import com.countriesexplorer.data.local.AppDatabase
 import com.countriesexplorer.data.local.CacheMetadataDao
 import com.countriesexplorer.data.local.CountryCacheDao
@@ -29,13 +30,19 @@ object DatabaseModule {
     @Provides
     @Singleton
     fun provideAppDatabase(@ApplicationContext context: Context): AppDatabase {
-        return Room.databaseBuilder(
+        val builder = Room.databaseBuilder(
             context,
             AppDatabase::class.java,
             "countries_db"
-        )
-            .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
-            .build()
+        ).addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+
+        if (BuildConfig.DEBUG) {
+            builder
+                .fallbackToDestructiveMigration()
+                .fallbackToDestructiveMigrationOnDowngrade()
+        }
+
+        return builder.build()
     }
 
     @Provides

@@ -15,23 +15,6 @@ object TestApiHolder {
 
     private val alphaErrorsRemaining = AtomicInteger(0)
 
-    fun armNextAlphaErrors(count: Int) {
-        alphaErrorsRemaining.set(count)
-    }
-
-    fun resetAlphaErrorArm() {
-        alphaErrorsRemaining.set(0)
-    }
-
-    fun ensureStarted() {
-        synchronized(this) {
-            if (started) return
-            installDispatcher()
-            server.start()
-            started = true
-        }
-    }
-
     private fun installDispatcher() {
         server.dispatcher = object : Dispatcher() {
             override fun dispatch(request: RecordedRequest): MockResponse {
@@ -50,6 +33,36 @@ object TestApiHolder {
                     else -> notFound()
                 }
             }
+        }
+    }
+
+    fun armNextAlphaErrors(count: Int) {
+        alphaErrorsRemaining.set(count)
+    }
+
+    fun resetAlphaErrorArm() {
+        alphaErrorsRemaining.set(0)
+    }
+
+    fun ensureStarted() {
+        synchronized(this) {
+            if (started) return
+            installDispatcher()
+            if (server.port <= 0) {
+                server.start()
+            }
+            started = true
+        }
+    }
+
+    fun shutdown() {
+        synchronized(this) {
+            if (!started) return
+            try {
+                server.shutdown()
+            } catch (_: Throwable) {
+            }
+            started = false
         }
     }
 
