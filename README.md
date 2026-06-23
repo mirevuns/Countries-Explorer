@@ -1,124 +1,99 @@
-# Countries Explorer — финальный проект
+# Countries Explorer
 
-Android-приложение для просмотра стран через **REST Countries API**. Offline-first: данные кэшируются в Room, пользовательские заметки и история просмотров сохраняются локально, фоновая синхронизация — через WorkManager.
+**Автор:** Грибовский Илья Игоревич
 
-**Стек:** Kotlin, Jetpack Compose, Coroutines, Retrofit, Room, DataStore, Hilt, WorkManager.
+Android-приложение для просмотра стран через REST Countries API.
 
-**Ветка:** `feature/final-project`
+**Ветки:** `feature/homework-6` (ДЗ 5-6), `feature/final-project` (финал)
 
-### Запуск
+**Стек:** Kotlin, Compose, Coroutines, Retrofit, Room, DataStore, Hilt, WorkManager
+
+## Запуск
+
+JDK 17, Windows, PowerShell:
 
 ```text
-gradlew.bat assembleDebug
-gradlew.bat :app:testDebugUnitTest
-gradlew.bat :app:connectedDebugAndroidTest
+.\gradlew.bat assembleDebug
+.\gradlew.bat :app:testDebugUnitTest
+.\gradlew.bat :app:connectedDebugAndroidTest
 ```
 
-API-ключ REST Countries v5 — в `local.properties`:
+Для instrumented-тестов нужен эмулятор или телефон.
+
+Ключ API v5 в `local.properties`:
 
 ```text
 REST_COUNTRIES_API_KEY=YOUR_KEY
 ```
 
-Ключ: регистрация на https://restcountries.com/sign-up
+Регистрация: https://restcountries.com/sign-up
+
+Перед первым запуском финальной ветки лучше удалить старую версию приложения (Room v6).
 
 ---
 
-## Что добавлено в финальной работе
+## ДЗ 5
 
-- **Offline-first `CountriesRepository`** — чтение из Room-кэша, обновление с API, TTL (`CachePolicy`), баннеры офлайн и устаревших данных.
-- **Экран «Настройки»** — TTL кэша, автообновление, синхронизация только по Wi‑Fi, предзагрузка; ручная синхронизация и очистка кэша; статус последней синхронизации.
-- **Экран «Недавние»** — список просмотренных стран из `visit_history` (по активному профилю).
-- **Экран «Профили»** — несколько профилей пользователя; активный профиль в DataStore; история, заметки, журнал и коллекции привязаны к профилю.
-- **Экран «Журнал»** — записи о просмотрах стран и ручные заметки (`journal_entries`).
-- **Экран «Коллекции»** — пользовательские списки стран; добавление страны из экрана детали.
-- **Заметки на экране детали** — сохранение и удаление текста в `country_notes` (по профилю).
-- **WorkManager** — периодическое обновление кэша и разовая предзагрузка (`SyncScheduler`, Hilt `WorkerFactory`).
-- **Нижняя навигация** — четыре вкладки: **Страны**, **Коллекции**, **История**, **Настройки** (`NavigationBar` в `NavGraph`). На экранах деталей, избранного, профилей и журнала панель скрывается.
-- **UI** — в топ-баре списка стран: профили, избранное, обновить; подпись активного профиля. Профили и журнал — из настроек.
+Список и детали стран, поиск, избранное в Room.
 
----
+- Тап по сердцу сохраняет страну в БД, после перезапуска избранное на месте
+- Обработка загрузки, ошибок сети, пустого списка и поиска
+- Архитектура: API и Room - Repository - ViewModel - Compose UI
 
-## Новые пользовательские данные
+**Тесты:** 21 юнит, 7 instrumented (`MainActivityComposeTest`, `NavigationComposeInstrumentedTest`, `FavoritesRoomInstrumentedTest` и др.)
 
-Добавлены таблицы Room (схема v6, миграции `4 → 5`, `5 → 6`):
-
-| Таблица | Назначение |
-|---------|------------|
-| `cached_countries` | Офлайн-кэш списка стран (JSON `Country`) |
-| `cache_metadata` | Время и статус последней полной синхронизации |
-| `visit_history` | Недавно просмотренные страны (по `profileId`) |
-| `country_notes` | Личные заметки к стране (ключ: `profileId` + `countryCode`) |
-| `profiles` | Профили пользователя |
-| `journal_entries` | Журнал: авто-записи при просмотре и ручные заметки |
-| `collections` | Названные коллекции стран (по `profileId`) |
-| `collection_countries` | Страны в коллекции |
-| `favorites` | Избранные страны (ключ: `profileId` + `code`) |
-
-Настройки приложения (TTL, автообновление, Wi‑Fi only, предзагрузка) — **DataStore** (`AppSettingsRepository`). Активный профиль — **DataStore** (`ProfileRepository`). Кэш стран (`cached_countries`) общий для всех профилей; история, заметки, журнал, коллекции и избранное — per-profile.
+**Ветка:** см. историю до `feature/homework-6`
 
 ---
 
-## Новые сценарии
+## ДЗ 6
 
-1. **Офлайн-режим** - после синхронизации отключить сеть: список и детали открываются из кэша; баннер «Офлайн-режим: показаны сохранённые данные» (на детали — «Офлайн: детали из локального кэша»).
-2. **История, журнал и заметки** — открыть страну → вкладка «История» и экран «Журнал» (из настроек); на детали написать заметку → перезапуск: данные сохранены для активного профиля.
-3. **Профили** — создать второй профиль, переключиться: история и заметки разделены по профилям.
-4. **Коллекции** — создать коллекцию, на детали страны нажать «Добавить в коллекцию».
-5. **Синхронизация** - в настройках включить автообновление или нажать «Синхронизировать» / «Предзагрузить офлайн»; кэш обновляется с учётом ограничения Wi‑Fi only.
-6. **Устаревший кэш** - при истечении TTL данные показываются с баннером «Данные могут быть устаревшими»; при наличии сети — обновление по запросу или в фоне.
+Flow и DataStore поверх ДЗ 5.
 
----
+- В списке: `combine`, `merge`, `debounce`, `flatMapLatest`, `stateIn`, refresh через `MutableSharedFlow`
+- Настройки списка (сортировка) в DataStore
+- Избранное по-прежнему в Room, обновляется через Flow
+- Локальный UI: подсказка поиска на `mutableStateOf`, остальное - `StateFlow`
 
-## Offline-first: как устроено
+**Тесты:** 22 юнит, 6 instrumented (добавлены проверки refresh без сети и FilterChips)
 
-Логика в `CountriesRepository` и `CachePolicy`:
-
-1. **Нет сети** - вернуть данные из Room; если кэш пуст - ошибка.
-2. **Сеть есть, кэш свежий** (TTL не истёк) → вернуть кэш без запроса к API.
-3. **Сеть есть, кэш устарел или запрошено обновление** - запрос к REST Countries API, запись в `cached_countries`, обновление `cache_metadata`.
-4. **Ошибка сети/API при непустом кэше** - вернуть кэш с флагом `isStale`; UI показывает баннер об устаревших данных.
-5. **Wi‑Fi only / частичное обновление** — `lastFullSyncAt` обновляется только при полной синхронизации всех регионов; точечная запись (деталь страны, поиск) не «обнуляет» TTL. При блокировке sync по Wi‑Fi UI показывает `syncBlocked`.
-
-Загрузка детали страны — по тому же принципу. `isStale` на детали считается через `CachePolicy`, а не всегда `true`. При открытии детали запись добавляется в `visit_history` и `journal_entries` активного профиля.
+**Ветка:** `feature/homework-6`, PR #3
 
 ---
 
-## Фоновая обработка (WorkManager)
+## Финальный проект
 
-| Компонент | Где используется | Зачем |
-|-----------|------------------|-------|
-| `CountryCacheSyncWorker` | Периодическая задача (каждые 6 ч) | Автообновление кэша при включённом автообновлении; учитывает Wi‑Fi only |
-| `CountryPreloadWorker` | Разовая задача по кнопке «Предзагрузить офлайн» | Загрузка всех регионов в кэш для работы без сети |
-| `SyncScheduler` | `CountriesApplication.onCreate`, экран настроек | Планирование и отмена периодической синхронизации, запуск предзагрузки |
-| Hilt `WorkerFactory` | `CountriesApplication` | Внедрение зависимостей в workers |
+Offline-first: страны кэшируются в Room, личные данные и синхронизация сохраняются локально.
 
-WorkManager инициализируется в `CountriesApplication` (`Configuration.Provider`); автозапуск через manifest отключён.
+**Что есть в приложении**
+
+- Кэш стран с TTL, баннеры офлайн и устаревших данных
+- Настройки: автообновление, Wi-Fi only, ручная синхронизация и предзагрузка
+- Нижняя навигация: Страны, Коллекции, История, Настройки
+- Профили: история, заметки, журнал, коллекции и избранное отдельно для каждого
+- Заметки на экране детали, журнал просмотров, пользовательские коллекции
+- WorkManager для фонового обновления кэша
+
+**Room v6:** `cached_countries`, `cache_metadata`, `visit_history`, `country_notes`, `profiles`, `journal_entries`, `collections`, `collection_countries`, `favorites`
+
+**Как проверить**
+
+1. Синхронизация или предзагрузка, потом авиарежим - список и детали из кэша
+2. Открыть страну - она появится в Истории и Журнале, заметка сохранится после перезапуска
+3. Второй профиль - свои данные, не смешиваются с первым
+4. Коллекция - добавить страну с экрана детали
+
+**Тесты:** 28 юнит, 11 instrumented (включая настройки, историю, заметки, WorkManager)
+
+**Ветка:** `feature/final-project`, PR #4
 
 ---
 
-## Тесты
+## Скриншоты (ДЗ 5)
 
-**28 юнит-тестов** (`app/src/test`):
-
-| Класс | Кол-во | Что проверяет |
-|-------|--------|---------------|
-| `CountriesListViewModelTest` | 7 | Состояния списка, фильтры, поиск |
-| `CountryDetailViewModelTest` | 3 | Загрузка детали, ошибки |
-| `FavoritesSharedViewModelTest` | 2 | Избранное |
-| `CountriesRepositoryTest` | 6 | API + кэш, offline / stale / force refresh |
-| `CachePolicyTest` | 3 | TTL кэша |
-| `VisitHistoryRepositoryTest` | 2 | Запись истории и журнала при просмотре |
-| `CountryNoteRepositoryTest` | 2 | Сохранение и удаление заметок |
-| `FavoriteEntityTest` | 1 | Маппинг избранного |
-| `CountryCodeHelperTest` | 2 | URL флагов |
-
-**11 instrumented-тестов** (`app/src/androidTest`, Hilt + Compose + Room in-memory + MockWebServer):
-
-| Класс | Кол-во | Что проверяет |
-|-------|--------|---------------|
-| `MainActivityComposeTest` | 1 | Список стран, загрузка данных |
-| `NavigationComposeInstrumentedTest` | 3 | Навигация список → детали, детали из кэша при ошибке сети, поиск |
-| `FavoritesRoomInstrumentedTest` | 2 | Room: избранное, Flow |
-| `FinalProjectComposeInstrumentedTest` | 3 | Настройки (нижняя вкладка), «История», заметка в Room |
-| `CountryCacheWorkerInstrumentedTest` | 2 | `CountryPreloadWorker`, `CountryCacheSyncWorker` |
+![Загрузка](screenshots/loading.png)
+![Ошибка](screenshots/error.png)
+![Список](screenshots/list.png)
+![Пусто](screenshots/empty.png)
+![Детали](screenshots/detail.png)
+![Избранное](screenshots/favorites.png)
