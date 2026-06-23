@@ -7,8 +7,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.CollectionsBookmark
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -19,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.countriesexplorer.R
+import com.countriesexplorer.data.local.CollectionEntity
 import com.countriesexplorer.data.model.Country
 import com.countriesexplorer.ui.state.UiState
 import com.countriesexplorer.util.CountryCodeHelper
@@ -29,15 +36,31 @@ fun CountryDetailScreen(
     countryCode: String,
     uiState: UiState<Country>,
     noteDraft: String,
+    collections: List<CollectionEntity>,
+    collectionMessage: String?,
     onNoteChanged: (String) -> Unit,
     onSaveNote: () -> Unit,
     onDeleteNote: () -> Unit,
+    onAddToCollection: (Long) -> Unit,
+    onClearCollectionMessage: () -> Unit,
     onNavigateBack: () -> Unit,
     onRetry: () -> Unit,
     isFavorite: Boolean,
     onFavoriteToggle: (String, Country?) -> Unit
 ) {
+    var showCollectionDialog by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val addedToCollectionMessage = stringResource(R.string.added_to_collection)
+
+    LaunchedEffect(collectionMessage) {
+        if (collectionMessage != null) {
+            snackbarHostState.showSnackbar(message = addedToCollectionMessage)
+            onClearCollectionMessage()
+        }
+    }
+
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.country_detail_title)) },
@@ -143,6 +166,13 @@ fun CountryDetailScreen(
                             color = MaterialTheme.colorScheme.primary
                         )
                         Spacer(modifier = Modifier.height(8.dp))
+                    } else if (state.syncBlocked) {
+                        Text(
+                            text = stringResource(R.string.sync_blocked_banner),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
                     } else if (state.isStale) {
                         Text(
                             text = stringResource(R.string.stale_cache_banner),
@@ -235,6 +265,19 @@ fun CountryDetailScreen(
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
+                    OutlinedButton(
+                        onClick = { showCollectionDialog = true },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CollectionsBookmark,
+                            contentDescription = null,
+                            modifier = Modifier.padding(end = 8.dp)
+                        )
+                        Text(stringResource(R.string.add_to_collection))
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
                     Text(
                         text = stringResource(R.string.country_note),
                         style = MaterialTheme.typography.titleMedium,
@@ -267,6 +310,37 @@ fun CountryDetailScreen(
                 }
             }
         }
+    }
+
+    if (showCollectionDialog) {
+        AlertDialog(
+            onDismissRequest = { showCollectionDialog = false },
+            title = { Text(stringResource(R.string.add_to_collection)) },
+            text = {
+                if (collections.isEmpty()) {
+                    Text(stringResource(R.string.no_collections))
+                } else {
+                    Column {
+                        collections.forEach { collection ->
+                            TextButton(
+                                onClick = {
+                                    onAddToCollection(collection.id)
+                                    showCollectionDialog = false
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(collection.name)
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showCollectionDialog = false }) {
+                    Text(stringResource(R.string.close))
+                }
+            }
+        )
     }
 }
 

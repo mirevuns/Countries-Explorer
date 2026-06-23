@@ -12,6 +12,7 @@ import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.countriesexplorer.R
+import com.countriesexplorer.data.repository.ProfileRepository
 import dagger.hilt.android.testing.HiltAndroidRule
 import dagger.hilt.android.testing.HiltAndroidTest
 import kotlinx.coroutines.Dispatchers
@@ -68,7 +69,7 @@ class FinalProjectComposeInstrumentedTest {
         val ctx = InstrumentationRegistry.getInstrumentation().targetContext
         InstrumentedTestSupport.launchNavGraph(composeRule)
         waitForTestland()
-        composeRule.onNodeWithContentDescription(ctx.getString(R.string.settings)).performClick()
+        composeRule.onNodeWithText(ctx.getString(R.string.tab_settings)).performClick()
         composeRule.waitUntil(5_000) {
             composeRule.onAllNodesWithText(ctx.getString(R.string.sync_now)).fetchSemanticsNodes().isNotEmpty()
         }
@@ -87,11 +88,11 @@ class FinalProjectComposeInstrumentedTest {
         composeRule.waitUntil(5_000) {
             composeRule.onAllNodesWithText("Testland").fetchSemanticsNodes().size >= 1
         }
-        composeRule.onNodeWithContentDescription(ctx.getString(R.string.recent)).performClick()
+        composeRule.onNodeWithText(ctx.getString(R.string.tab_history)).performClick()
         composeRule.waitUntil(5_000) {
             composeRule.onAllNodesWithText("Testland").fetchSemanticsNodes().isNotEmpty()
         }
-        composeRule.onNodeWithText(ctx.getString(R.string.recent)).assertIsDisplayed()
+        composeRule.onNodeWithText(ctx.getString(R.string.tab_history)).assertIsDisplayed()
         composeRule.onNodeWithText("Testland").assertIsDisplayed()
     }
 
@@ -108,12 +109,14 @@ class FinalProjectComposeInstrumentedTest {
             runBlocking(Dispatchers.IO) {
                 InstrumentedTestSupport.entryPoint()
                     .countryNoteDao()
-                    .getByCountryCode("TL")
+                    .getByCountryCode(ProfileRepository.DEFAULT_PROFILE_ID, "TL")
                     ?.text == noteText
             }
         }
         val saved = runBlocking(Dispatchers.IO) {
-            InstrumentedTestSupport.entryPoint().countryNoteDao().getByCountryCode("TL")
+            InstrumentedTestSupport.entryPoint()
+                .countryNoteDao()
+                .getByCountryCode(ProfileRepository.DEFAULT_PROFILE_ID, "TL")
         }
         assertEquals(noteText, saved?.text)
         assertEquals("TL", saved?.countryCode)

@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
@@ -43,7 +44,9 @@ fun SettingsScreen(
     onPreloadNow: () -> Unit,
     onSyncNow: () -> Unit,
     onClearSyncMessage: () -> Unit,
-    onNavigateBack: () -> Unit
+    onNavigateBack: (() -> Unit)? = null,
+    onNavigateToProfiles: (() -> Unit)? = null,
+    onNavigateToJournal: (() -> Unit)? = null
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -59,8 +62,10 @@ fun SettingsScreen(
             TopAppBar(
                 title = { Text(stringResource(R.string.settings)) },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.back))
+                    if (onNavigateBack != null) {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.back))
+                        }
                     }
                 }
             )
@@ -75,6 +80,21 @@ fun SettingsScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            if (onNavigateToProfiles != null || onNavigateToJournal != null) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    onNavigateToProfiles?.let { navigate ->
+                        OutlinedButton(onClick = navigate) {
+                            Text(stringResource(R.string.profiles))
+                        }
+                    }
+                    onNavigateToJournal?.let { navigate ->
+                        OutlinedButton(onClick = navigate) {
+                            Text(stringResource(R.string.journal))
+                        }
+                    }
+                }
+            }
+
             Text(stringResource(R.string.cache_ttl_label), style = MaterialTheme.typography.titleMedium)
             Text(stringResource(R.string.cache_ttl_value, settings.cacheTtlHours))
             Slider(

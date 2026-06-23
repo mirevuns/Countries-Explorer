@@ -5,10 +5,15 @@ import androidx.room.Room
 import com.countriesexplorer.data.local.AppDatabase
 import com.countriesexplorer.data.local.CacheMetadataDao
 import com.countriesexplorer.data.local.CountryCacheDao
+import com.countriesexplorer.data.local.CollectionDao
 import com.countriesexplorer.data.local.CountryNoteDao
 import com.countriesexplorer.data.local.FavoriteDao
+import com.countriesexplorer.data.local.JournalEntryDao
 import com.countriesexplorer.data.local.MIGRATION_2_3
 import com.countriesexplorer.data.local.MIGRATION_3_4
+import com.countriesexplorer.data.local.MIGRATION_4_5
+import com.countriesexplorer.data.local.MIGRATION_5_6
+import com.countriesexplorer.data.local.ProfileDao
 import com.countriesexplorer.data.local.VisitHistoryDao
 import dagger.Module
 import dagger.Provides
@@ -29,7 +34,7 @@ object DatabaseModule {
             AppDatabase::class.java,
             "countries_db"
         )
-            .addMigrations(MIGRATION_2_3, MIGRATION_3_4)
+            .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
             .build()
     }
 
@@ -52,4 +57,16 @@ object DatabaseModule {
     @Provides
     @Singleton
     fun provideCountryNoteDao(database: AppDatabase): CountryNoteDao = database.countryNoteDao()
+
+    @Provides
+    @Singleton
+    fun provideProfileDao(database: AppDatabase): ProfileDao = database.profileDao()
+
+    @Provides
+    @Singleton
+    fun provideJournalEntryDao(database: AppDatabase): JournalEntryDao = database.journalEntryDao()
+
+    @Provides
+    @Singleton
+    fun provideCollectionDao(database: AppDatabase): CollectionDao = database.collectionDao()
 }

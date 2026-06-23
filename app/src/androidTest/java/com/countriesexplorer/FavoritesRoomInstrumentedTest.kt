@@ -5,6 +5,7 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.countriesexplorer.data.local.AppDatabase
 import com.countriesexplorer.data.local.FavoriteEntity
+import com.countriesexplorer.data.repository.ProfileRepository
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
@@ -40,10 +41,10 @@ class FavoritesRoomInstrumentedTest {
     fun insert_sameCode_twice_replace_yieldsSingleRow() = runBlocking {
         val dao = db.favoriteDao()
         val c = AndroidTestFixtures.country()
-        val e = FavoriteEntity.fromCountry(c)
+        val e = FavoriteEntity.fromCountry(c, ProfileRepository.DEFAULT_PROFILE_ID)
         dao.insert(e)
         dao.insert(e)
-        val all = dao.getAllFavoritesFlow().first()
+        val all = dao.getAllFavoritesFlow(ProfileRepository.DEFAULT_PROFILE_ID).first()
         assertEquals(1, all.size)
         assertEquals(e.code, all.first().code)
     }
@@ -54,11 +55,16 @@ class FavoritesRoomInstrumentedTest {
         withTimeout(5_000) {
             coroutineScope {
                 val codesAfterInsert = async {
-                    dao.getAllFavoriteCodes().first { it.contains("AA") }
+                    dao.getAllFavoriteCodes(ProfileRepository.DEFAULT_PROFILE_ID).first { it.contains("AA") }
                 }
                 launch {
                     delay(80)
-                    dao.insert(FavoriteEntity.fromCountry(AndroidTestFixtures.country("A", "AA")))
+                    dao.insert(
+                        FavoriteEntity.fromCountry(
+                            AndroidTestFixtures.country("A", "AA"),
+                            ProfileRepository.DEFAULT_PROFILE_ID
+                        )
+                    )
                 }
                 assertEquals(listOf("AA"), codesAfterInsert.await())
             }

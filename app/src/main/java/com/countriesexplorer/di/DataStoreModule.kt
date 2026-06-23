@@ -26,6 +26,10 @@ object DataStoreModule {
     @Volatile
     private var appSettingsStore: DataStore<Preferences>? = null
 
+    private val profileStoreLock = Any()
+    @Volatile
+    private var profileStore: DataStore<Preferences>? = null
+
     @Provides
     @Singleton
     @ListPreferencesDataStore
@@ -49,6 +53,19 @@ object DataStoreModule {
                 corruptionHandler = ReplaceFileCorruptionHandler { emptyPreferences() },
                 produceFile = { context.preferencesDataStoreFile("app_settings") }
             ).also { appSettingsStore = it }
+        }
+    }
+
+    @Provides
+    @Singleton
+    @ProfilePreferencesDataStore
+    fun provideProfilePreferencesDataStore(@ApplicationContext context: Context): DataStore<Preferences> {
+        profileStore?.let { return it }
+        return synchronized(profileStoreLock) {
+            profileStore ?: PreferenceDataStoreFactory.create(
+                corruptionHandler = ReplaceFileCorruptionHandler { emptyPreferences() },
+                produceFile = { context.preferencesDataStoreFile("profile_preferences") }
+            ).also { profileStore = it }
         }
     }
 }

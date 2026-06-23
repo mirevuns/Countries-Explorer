@@ -6,14 +6,17 @@ import com.countriesexplorer.data.local.CachedCountryEntity
 import com.countriesexplorer.data.local.CacheMetadataEntity
 import com.countriesexplorer.data.preferences.AppSettings
 import com.countriesexplorer.data.preferences.AppSettingsRepository
+import com.countriesexplorer.data.repository.ProfileRepository.Companion.DEFAULT_PROFILE_ID
 import com.countriesexplorer.testdoubles.FakeCacheMetadataDao
 import com.countriesexplorer.testdoubles.FakeCountryCacheDao
+import com.countriesexplorer.testdoubles.FakeJournalEntryDao
 import com.countriesexplorer.testdoubles.FakeVisitHistoryDao
 import com.countriesexplorer.util.NetworkMonitor
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
@@ -34,7 +37,16 @@ class CountriesRepositoryTest {
     private val countryCacheDao = FakeCountryCacheDao()
     private val cacheMetadataDao = FakeCacheMetadataDao()
     private val visitHistoryDao = FakeVisitHistoryDao()
-    private val visitHistoryRepository = VisitHistoryRepository(visitHistoryDao)
+    private val profileRepository = mockk<ProfileRepository>(relaxed = true) {
+        coEvery { currentProfileId() } returns DEFAULT_PROFILE_ID
+        every { activeProfileId } returns flowOf(DEFAULT_PROFILE_ID)
+    }
+    private val journalRepository = JournalRepository(FakeJournalEntryDao(), profileRepository)
+    private val visitHistoryRepository = VisitHistoryRepository(
+        visitHistoryDao,
+        profileRepository,
+        journalRepository
+    )
     private val appSettingsRepository = mockk<AppSettingsRepository>()
     private val networkMonitor = mockk<NetworkMonitor>()
 

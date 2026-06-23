@@ -2,31 +2,29 @@ package com.countriesexplorer.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.countriesexplorer.data.local.FavoriteDao
 import com.countriesexplorer.data.local.FavoriteEntity
 import com.countriesexplorer.data.model.Country
+import com.countriesexplorer.data.repository.FavoriteRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class FavoritesSharedViewModel @Inject constructor(
-    private val favoriteDao: FavoriteDao
+    private val favoriteRepository: FavoriteRepository
 ) : ViewModel() {
 
-    val favorites: StateFlow<Set<String>> = favoriteDao.getAllFavoriteCodes()
-        .map { it.toSet() }
+    val favorites: StateFlow<Set<String>> = favoriteRepository.favoriteCodes
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = emptySet()
         )
 
-    val favoriteEntries: StateFlow<List<FavoriteEntity>> = favoriteDao.getAllFavoritesFlow()
+    val favoriteEntries: StateFlow<List<FavoriteEntity>> = favoriteRepository.favorites
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
@@ -36,9 +34,9 @@ class FavoritesSharedViewModel @Inject constructor(
     fun toggleFavorite(code: String, country: Country? = null) {
         viewModelScope.launch {
             if (country != null) {
-                favoriteDao.toggleFavorite(FavoriteEntity.fromCountry(country))
+                favoriteRepository.toggleFavorite(country)
             } else {
-                favoriteDao.deleteByCode(code)
+                favoriteRepository.removeFavorite(code)
             }
         }
     }

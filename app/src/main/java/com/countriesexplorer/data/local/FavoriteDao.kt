@@ -10,25 +10,28 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface FavoriteDao {
 
-    @Query("SELECT * FROM favorites ORDER BY name ASC")
-    fun getAllFavoritesFlow(): Flow<List<FavoriteEntity>>
+    @Query("SELECT * FROM favorites WHERE profileId = :profileId ORDER BY name ASC")
+    fun getAllFavoritesFlow(profileId: Long): Flow<List<FavoriteEntity>>
 
-    @Query("SELECT code FROM favorites ORDER BY name ASC")
-    fun getAllFavoriteCodes(): Flow<List<String>>
-    
+    @Query("SELECT code FROM favorites WHERE profileId = :profileId ORDER BY name ASC")
+    fun getAllFavoriteCodes(profileId: Long): Flow<List<String>>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(entity: FavoriteEntity)
-    
-    @Query("DELETE FROM favorites WHERE code = :code")
-    suspend fun deleteByCode(code: String)
-    
-    @Query("SELECT EXISTS(SELECT 1 FROM favorites WHERE code = :code)")
-    suspend fun isFavorite(code: String): Boolean
+
+    @Query("DELETE FROM favorites WHERE profileId = :profileId AND code = :code")
+    suspend fun deleteByCode(profileId: Long, code: String)
+
+    @Query("SELECT EXISTS(SELECT 1 FROM favorites WHERE profileId = :profileId AND code = :code)")
+    suspend fun isFavorite(profileId: Long, code: String): Boolean
+
+    @Query("DELETE FROM favorites WHERE profileId = :profileId")
+    suspend fun deleteForProfile(profileId: Long)
 
     @Transaction
     suspend fun toggleFavorite(entity: FavoriteEntity) {
-        if (isFavorite(entity.code)) {
-            deleteByCode(entity.code)
+        if (isFavorite(entity.profileId, entity.code)) {
+            deleteByCode(entity.profileId, entity.code)
         } else {
             insert(entity)
         }

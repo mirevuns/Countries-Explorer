@@ -9,9 +9,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -40,32 +39,35 @@ fun CountriesListScreen(
     uiState: UiState<List<Country>>,
     searchQuery: String,
     listPrefs: ListPreferences,
+    activeProfileName: String,
     onSearchQueryChanged: (String) -> Unit,
     onRefresh: () -> Unit,
     onShowFavoritesOnlyChange: (Boolean) -> Unit,
     onSortByNameChange: (Boolean) -> Unit,
     onNavigateToDetail: (String) -> Unit,
     onNavigateToFavorites: () -> Unit,
-    onNavigateToRecent: () -> Unit,
-    onNavigateToSettings: () -> Unit,
+    onNavigateToProfiles: () -> Unit,
     favoritesSet: Set<String>,
     onFavoriteToggle: (String, Country) -> Unit
 ) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.countries_list)) },
-                actions = {
-                    IconButton(onClick = onNavigateToRecent) {
-                        Icon(
-                            imageVector = Icons.Default.History,
-                            contentDescription = stringResource(R.string.recent)
+                title = {
+                    Column {
+                        Text(stringResource(R.string.countries_list))
+                        Text(
+                            text = stringResource(R.string.active_profile_label, activeProfileName),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    IconButton(onClick = onNavigateToSettings) {
+                },
+                actions = {
+                    IconButton(onClick = onNavigateToProfiles) {
                         Icon(
-                            imageVector = Icons.Default.Settings,
-                            contentDescription = stringResource(R.string.settings)
+                            imageVector = Icons.Default.Person,
+                            contentDescription = stringResource(R.string.profiles)
                         )
                     }
                     IconButton(onClick = onNavigateToFavorites) {
@@ -125,43 +127,25 @@ fun CountriesListScreen(
                 FilterChip(
                     selected = listPrefs.showFavoritesOnly,
                     onClick = { onShowFavoritesOnlyChange(!listPrefs.showFavoritesOnly) },
-                    label = { Text(stringResource(R.string.filter_favorites_only)) }
+                    label = { Text(stringResource(R.string.filter_favorites_only), maxLines = 1) }
                 )
-            }
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = stringResource(R.string.sort_label),
-                    style = MaterialTheme.typography.labelLarge,
-                    modifier = Modifier.padding(end = 8.dp)
+                FilterChip(
+                    selected = listPrefs.sortByName,
+                    onClick = { onSortByNameChange(true) },
+                    label = { Text(stringResource(R.string.sort_by_name), maxLines = 1) }
                 )
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    RadioButton(
-                        selected = listPrefs.sortByName,
-                        onClick = { onSortByNameChange(true) }
-                    )
-                    Text(
-                        text = stringResource(R.string.sort_by_name),
-                        modifier = Modifier.padding(end = 12.dp)
-                    )
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    RadioButton(
-                        selected = !listPrefs.sortByName,
-                        onClick = { onSortByNameChange(false) }
-                    )
-                    Text(text = stringResource(R.string.sort_by_population))
-                }
+                FilterChip(
+                    selected = !listPrefs.sortByName,
+                    onClick = { onSortByNameChange(false) },
+                    label = { Text(stringResource(R.string.sort_by_population), maxLines = 1) }
+                )
             }
 
             val cacheBanner = when (val state = uiState) {
                 is UiState.Success -> {
                     when {
                         state.isOffline -> stringResource(R.string.offline_cache_banner)
+                        state.syncBlocked -> stringResource(R.string.sync_blocked_banner)
                         state.isStale -> stringResource(R.string.stale_cache_banner)
                         else -> null
                     }

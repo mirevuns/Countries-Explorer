@@ -10,7 +10,8 @@ sealed class UiState<out T> {
         val data: T,
         val isStale: Boolean = false,
         val lastUpdatedAt: Long? = null,
-        val isOffline: Boolean = false
+        val isOffline: Boolean = false,
+        val syncBlocked: Boolean = false
     ) : UiState<T>()
     object Empty : UiState<Nothing>()
 }

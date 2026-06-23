@@ -2,11 +2,12 @@ package com.countriesexplorer.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.countriesexplorer.data.local.FavoriteDao
 import com.countriesexplorer.data.model.Country
 import com.countriesexplorer.data.preferences.ListPreferences
 import com.countriesexplorer.data.preferences.ListPreferencesRepository
 import com.countriesexplorer.data.repository.CountriesRepository
+import com.countriesexplorer.data.repository.FavoriteRepository
+import com.countriesexplorer.data.repository.ProfileRepository
 import com.countriesexplorer.ui.state.UiState
 import com.countriesexplorer.util.CountryCodeHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -35,8 +36,9 @@ import kotlinx.coroutines.FlowPreview
 @HiltViewModel
 class CountriesListViewModel @Inject constructor(
     private val repository: CountriesRepository,
-    private val favoriteDao: FavoriteDao,
-    private val listPreferencesRepository: ListPreferencesRepository
+    private val favoriteRepository: FavoriteRepository,
+    private val listPreferencesRepository: ListPreferencesRepository,
+    private val profileRepository: ProfileRepository
 ) : ViewModel() {
 
     private val _searchQuery = MutableStateFlow("")
@@ -54,6 +56,14 @@ class CountriesListViewModel @Inject constructor(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = ListPreferences()
+        )
+
+    val activeProfileName: StateFlow<String> = profileRepository.activeProfile
+        .map { it?.name ?: ProfileRepository.DEFAULT_PROFILE_NAME }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = ProfileRepository.DEFAULT_PROFILE_NAME
         )
 
     private val debouncedSearchQuery = _searchQuery
@@ -106,7 +116,7 @@ class CountriesListViewModel @Inject constructor(
     val uiState: StateFlow<UiState<List<Country>>> = combine(
         remoteAfterSearch,
         listPreferencesRepository.listPreferences,
-        favoriteDao.getAllFavoriteCodes().map { it.toSet() }
+        favoriteRepository.favoriteCodes
     ) { state, prefs, favoriteCodes ->
         applyListPreferences(state, prefs, favoriteCodes)
     }.stateIn(
@@ -171,7 +181,8 @@ class CountriesListViewModel @Inject constructor(
                 data = countries,
                 isStale = isStale,
                 lastUpdatedAt = lastSyncAt,
-                isOffline = isOffline
+                isOffline = isOffline,
+                syncBlocked = syncBlocked
             )
         }
     }

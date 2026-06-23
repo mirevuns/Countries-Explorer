@@ -10,6 +10,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.test.ext.junit.rules.ActivityScenarioRule
 import com.countriesexplorer.data.local.CacheMetadataEntity
 import com.countriesexplorer.data.local.CachedCountryEntity
+import com.countriesexplorer.data.local.ProfileEntity
+import com.countriesexplorer.data.repository.ProfileRepository
 import com.countriesexplorer.ui.navigation.NavGraph
 import com.countriesexplorer.ui.theme.CountriesExplorerTheme
 import com.countriesexplorer.ui.viewmodel.FavoritesSharedViewModel
@@ -77,7 +79,21 @@ object InstrumentedTestSupport {
     }
 
     fun clearVisitHistory() = runBlocking(Dispatchers.IO) {
-        entryPoint().visitHistoryDao().clearAll()
+        entryPoint().visitHistoryDao().clearForProfile(ProfileRepository.DEFAULT_PROFILE_ID)
+    }
+
+    fun ensureDefaultProfile() = runBlocking(Dispatchers.IO) {
+        val entryPoint = entryPoint()
+        val profileDao = entryPoint.profileDao()
+        if (profileDao.count() == 0) {
+            profileDao.insert(
+                ProfileEntity(
+                    name = ProfileRepository.DEFAULT_PROFILE_NAME,
+                    createdAt = System.currentTimeMillis()
+                )
+            )
+        }
+        entryPoint.profileRepository().ensureDefaultProfile()
     }
 
     fun launchNavGraph(
@@ -86,6 +102,7 @@ object InstrumentedTestSupport {
         clearHistory: Boolean = false
     ) {
         ensureWorkManagerInitialized()
+        ensureDefaultProfile()
         if (seedCache) {
             seedTestlandCache()
         }

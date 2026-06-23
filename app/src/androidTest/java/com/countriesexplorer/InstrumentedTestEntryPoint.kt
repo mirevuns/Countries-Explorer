@@ -5,10 +5,12 @@ import com.countriesexplorer.data.local.CachedCountryEntity
 import com.countriesexplorer.data.local.CacheMetadataDao
 import com.countriesexplorer.data.local.CountryCacheDao
 import com.countriesexplorer.data.local.CountryNoteDao
+import com.countriesexplorer.data.local.ProfileDao
 import com.countriesexplorer.data.local.VisitHistoryDao
 import androidx.hilt.work.HiltWorkerFactory
 import com.countriesexplorer.data.preferences.AppSettingsRepository
 import com.countriesexplorer.data.preferences.ListPreferencesRepository
+import com.countriesexplorer.data.repository.ProfileRepository
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
@@ -22,5 +24,7 @@ interface InstrumentedTestEntryPoint {
     fun cacheMetadataDao(): CacheMetadataDao
     fun countryNoteDao(): CountryNoteDao
     fun visitHistoryDao(): VisitHistoryDao
+    fun profileDao(): ProfileDao
+    fun profileRepository(): ProfileRepository
     fun hiltWorkerFactory(): HiltWorkerFactory
 }

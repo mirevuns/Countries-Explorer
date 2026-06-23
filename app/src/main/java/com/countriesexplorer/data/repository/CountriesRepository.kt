@@ -66,7 +66,8 @@ class CountriesRepository @Inject constructor(
                     countries = localCountries,
                     isStale = isStale,
                     lastSyncAt = lastSyncAt,
-                    isOffline = false
+                    isOffline = false,
+                    syncBlocked = true
                 )
             }
             throw IOException("Синхронизация доступна только по Wi-Fi. Подключитесь к Wi-Fi или отключите ограничение в настройках.")
@@ -155,11 +156,12 @@ class CountriesRepository @Inject constructor(
 
         return try {
             val remote = fetchAllCountries(query).map { it.toCountry() }
-            persistCountries(remote)
+            persistCountries(remote, markFullSync = false)
+            val metadata = cacheMetadataDao.get()
             CountriesLoadResult(
                 countries = remote,
-                isStale = false,
-                lastSyncAt = System.currentTimeMillis(),
+                isStale = cacheIsStale(),
+                lastSyncAt = metadata?.lastFullSyncAt,
                 isOffline = false
             )
         } catch (e: Exception) {
@@ -174,31 +176,49 @@ class CountriesRepository @Inject constructor(
         if (!networkMonitor.isConnected) {
             if (cached != null) {
                 if (recordVisit) visitHistoryRepository.recordVisit(cached)
-                return CountryLoadResult(cached, isStale = true, isOffline = true)
+                return countryFromCache(cached, isOffline = true)
             }
             throw IOException("Нет подключения к интернету. Проверьте сеть и попробуйте снова.")
         }
 
         if (networkMonitor.shouldBlockSync(appSettingsRepository.currentSettings().wifiOnlySync) && cached != null) {
             if (recordVisit) visitHistoryRepository.recordVisit(cached)
-            return CountryLoadResult(cached, isStale = true, isOffline = false)
+            return countryFromCache(cached, isOffline = false, syncBlocked = true)
         }
 
         return try {
             val country = fetchCountryFromNetwork(code)
-            persistCountries(listOf(country))
+            persistCountries(listOf(country), markFullSync = false)
             if (recordVisit) visitHistoryRepository.recordVisit(country)
-            CountryLoadResult(country, isStale = false, isOffline = false)
+            CountryLoadResult(country, isStale = cacheIsStale(), isOffline = false)
         } catch (e: CountryNotFoundException) {
             throw e
         } catch (e: Exception) {
             handleApiException(e)
             if (cached != null) {
                 if (recordVisit) visitHistoryRepository.recordVisit(cached)
-                return CountryLoadResult(cached, isStale = true, isOffline = false)
+                return countryFromCache(cached, isOffline = false)
             }
             throw e
         }
+    }
+
+    private suspend fun cacheIsStale(): Boolean {
+        val settings = appSettingsRepository.currentSettings()
+        return CachePolicy.isStale(cacheMetadataDao.get()?.lastFullSyncAt, settings.cacheTtlHours)
+    }
+
+    private suspend fun countryFromCache(
+        country: Country,
+        isOffline: Boolean,
+        syncBlocked: Boolean = false
+    ): CountryLoadResult {
+        return CountryLoadResult(
+            country = country,
+            isStale = cacheIsStale(),
+            isOffline = isOffline,
+            syncBlocked = syncBlocked
+        )
     }
 
     private suspend fun loadCountriesFromCache(): List<Country> {
@@ -211,20 +231,22 @@ class CountriesRepository @Inject constructor(
 
     private suspend fun fetchFromNetworkAndPersist(): List<Country> {
         val countries = loadAllCountriesByRegions()
-        persistCountries(countries)
+        persistCountries(countries, markFullSync = true)
         return countries
     }
 
-    private suspend fun persistCountries(countries: List<Country>) {
+    private suspend fun persistCountries(countries: List<Country>, markFullSync: Boolean = false) {
         val now = System.currentTimeMillis()
         val entities = countries.map { CachedCountryEntity.fromCountry(it, now) }
         countryCacheDao.insertAll(entities)
-        cacheMetadataDao.upsert(
-            CacheMetadataEntity(
-                lastFullSyncAt = now,
-                lastSyncStatus = CacheMetadataEntity.STATUS_SUCCESS
+        if (markFullSync) {
+            cacheMetadataDao.upsert(
+                CacheMetadataEntity(
+                    lastFullSyncAt = now,
+                    lastSyncStatus = CacheMetadataEntity.STATUS_SUCCESS
+                )
             )
-        )
+        }
     }
 
     private suspend fun loadAllCountriesByRegions(): List<Country> = coroutineScope {

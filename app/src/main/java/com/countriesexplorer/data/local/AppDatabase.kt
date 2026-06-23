@@ -10,9 +10,13 @@ import androidx.room.TypeConverters
         CachedCountryEntity::class,
         CacheMetadataEntity::class,
         VisitHistoryEntity::class,
-        CountryNoteEntity::class
+        CountryNoteEntity::class,
+        ProfileEntity::class,
+        JournalEntryEntity::class,
+        CollectionEntity::class,
+        CollectionCountryEntity::class
     ],
-    version = 4,
+    version = 6,
     exportSchema = false
 )
 @TypeConverters(CountryTypeConverters::class)
@@ -22,4 +26,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun cacheMetadataDao(): CacheMetadataDao
     abstract fun visitHistoryDao(): VisitHistoryDao
     abstract fun countryNoteDao(): CountryNoteDao
+    abstract fun profileDao(): ProfileDao
+    abstract fun journalEntryDao(): JournalEntryDao
+    abstract fun collectionDao(): CollectionDao
 }

@@ -3,8 +3,10 @@ package com.countriesexplorer.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.countriesexplorer.data.repository.CountriesRepository
+import com.countriesexplorer.data.repository.CollectionRepository
 import com.countriesexplorer.data.repository.CountryNoteRepository
 import com.countriesexplorer.data.repository.CountryNotFoundException
+import com.countriesexplorer.data.local.CollectionEntity
 import com.countriesexplorer.ui.state.UiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,7 +25,8 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 @HiltViewModel
 class CountryDetailViewModel @Inject constructor(
     private val repository: CountriesRepository,
-    private val countryNoteRepository: CountryNoteRepository
+    private val countryNoteRepository: CountryNoteRepository,
+    private val collectionRepository: CollectionRepository
 ) : ViewModel() {
 
     private val _countryCode = MutableStateFlow("")
@@ -32,6 +35,12 @@ class CountryDetailViewModel @Inject constructor(
 
     private val _noteDraft = MutableStateFlow("")
     val noteDraft: StateFlow<String> = _noteDraft.asStateFlow()
+
+    val collections: StateFlow<List<CollectionEntity>> = collectionRepository.collections
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    private val _collectionMessage = MutableStateFlow<String?>(null)
+    val collectionMessage: StateFlow<String?> = _collectionMessage.asStateFlow()
 
     val savedNote = _countryCode
         .flatMapLatest { code ->
@@ -49,7 +58,8 @@ class CountryDetailViewModel @Inject constructor(
                 _uiState.value = UiState.Success(
                     data = result.country,
                     isStale = result.isStale,
-                    isOffline = result.isOffline
+                    isOffline = result.isOffline,
+                    syncBlocked = result.syncBlocked
                 )
                 _noteDraft.value = countryNoteRepository.getNote(code)?.text.orEmpty()
             } catch (e: CountryNotFoundException) {
@@ -85,5 +95,17 @@ class CountryDetailViewModel @Inject constructor(
             countryNoteRepository.deleteNote(code)
             _noteDraft.value = ""
         }
+    }
+
+    fun addToCollection(collectionId: Long) {
+        val country = (_uiState.value as? UiState.Success)?.data ?: return
+        viewModelScope.launch {
+            collectionRepository.addCountryToCollection(collectionId, country)
+            _collectionMessage.value = "added"
+        }
+    }
+
+    fun clearCollectionMessage() {
+        _collectionMessage.value = null
     }
 }
