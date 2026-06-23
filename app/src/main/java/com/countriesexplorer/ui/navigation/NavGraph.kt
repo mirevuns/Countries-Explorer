@@ -41,12 +41,16 @@ fun NavGraph(
             val viewModel: CountriesListViewModel = hiltViewModel()
             val uiState by viewModel.uiState.collectAsStateWithLifecycle()
             val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
+            val listPrefs by viewModel.listPreferences.collectAsStateWithLifecycle()
 
             CountriesListScreen(
                 uiState = uiState,
                 searchQuery = searchQuery,
+                listPrefs = listPrefs,
                 onSearchQueryChanged = viewModel::onSearchQueryChanged,
                 onRefresh = viewModel::refresh,
+                onShowFavoritesOnlyChange = viewModel::setShowFavoritesOnly,
+                onSortByNameChange = viewModel::setSortByName,
                 onNavigateToDetail = { code ->
                     navController.navigate(Screen.CountryDetail.createRoute(code))
                 },

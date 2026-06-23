@@ -1,60 +1,67 @@
-# Countries Explorer (Android)
+# Countries Explorer
 
 **Автор:** Грибовский Илья Игоревич
 
-## Описание
+Android-приложение для просмотра стран через REST Countries API.
 
-**Countries Explorer** — Android-приложение для просмотра стран мира через **REST Countries API**. Экран избранного с **Room**: данные переживают перезапуск.
+**Ветка:** `feature/homework-6` (ДЗ 5-6). Финальный проект - `feature/final-project`, PR #4.
 
-- **Room:** таблица `favorites` (`code`, `name`, `region`, `flagUrl`). Тап по сердцу — запись в БД, снятие избранного — удаление. Экран избранного читает Room через **Flow**.
-- **Проверка:** добавить страну в избранное → закрыть приложение → снова открыть — избранное на месте.
+**Стек:** Kotlin, Compose, Coroutines, Retrofit, Room, DataStore, Hilt
 
-## Стек и архитектура
+## Запуск
 
-- Kotlin + Jetpack Compose + Coroutines
-- Retrofit + OkHttp + Gson
-- DI: Hilt
-- БД: Room (таблица favorites)
-- Архитектура: data (API, local) → Repository → ViewModel → UI
+JDK 17, Windows, PowerShell:
 
-## API (REST Countries)
-
-- Base URL: https://api.restcountries.com/
-- List: GET /countries/v5/region/{region}
-- Search: GET /countries/v5/name?q={name}
-- Detail: GET /countries/v5/code?q={code}
-- API ключ: добавить `REST_COUNTRIES_API_KEY` в `local.properties` (см. https://restcountries.com/sign-up)
-
-## ДЗ 5
-
-Юнит- и интеграционные тесты, Room, навигация Compose, обработка ошибок без маскировки под `Empty`, детерминированные тесты ViewModel/репозитория.
-
-### Юнит-тесты
-
-`CountriesListViewModelTest` (5), `CountryDetailViewModelTest` (3), `FavoritesSharedViewModelTest` (2), `CountriesRepositoryTest` (6), `FavoriteEntityTest` (1), `CountryCodeHelperTest` (2).
-
-### Интеграция
-
-`MainActivityComposeTest` (1), `NavigationComposeInstrumentedTest` (3), `FavoritesRoomInstrumentedTest` (2).
-
-### Запуск тестов
-
-```bat
+```text
+.\gradlew.bat assembleDebug
 .\gradlew.bat :app:testDebugUnitTest
 .\gradlew.bat :app:connectedDebugAndroidTest
 ```
 
-## Сборка (JDK 17)
+Для instrumented-тестов нужен эмулятор или телефон.
 
-```bat
-.\gradlew.bat assembleDebug
+Ключ API v5 в `local.properties`:
+
+```text
+REST_COUNTRIES_API_KEY=YOUR_KEY
 ```
+
+Регистрация: https://restcountries.com/sign-up
+
+---
+
+## ДЗ 5
+
+Список и детали стран, поиск, избранное в Room.
+
+- Тап по сердцу сохраняет страну в БД, после перезапуска избранное на месте
+- Обработка загрузки, ошибок сети, пустого списка и поиска
+- Архитектура: API и Room - Repository - ViewModel - Compose UI
+
+**Тесты:** 21 юнит, 7 instrumented (`MainActivityComposeTest`, `NavigationComposeInstrumentedTest`, `FavoritesRoomInstrumentedTest` и др.)
+
+---
+
+## ДЗ 6
+
+Flow и DataStore поверх ДЗ 5.
+
+- В списке: `combine`, `merge`, `debounce`, `flatMapLatest`, `stateIn`, refresh через `MutableSharedFlow`
+- Настройки списка (сортировка) в DataStore
+- Избранное по-прежнему в Room, обновляется через Flow
+- Локальный UI: подсказка поиска на `mutableStateOf`, остальное - `StateFlow`
+
+**Тесты:** 22 юнит, 6 instrumented (refresh без сети, FilterChips)
+
+**PR:** #3
+
+---
 
 ## Скриншоты
 
 ![Загрузка](screenshots/loading.png)
-![Ошибка загрузки](screenshots/error.png)
-![Список стран](screenshots/list.png)
-![Ничего не найдено](screenshots/empty.png)
-![Детали страны](screenshots/detail.png)
+![Ошибка](screenshots/error.png)
+![Список](screenshots/list.png)
+![Пусто](screenshots/empty.png)
+![Детали](screenshots/detail.png)
 ![Избранное](screenshots/favorites.png)

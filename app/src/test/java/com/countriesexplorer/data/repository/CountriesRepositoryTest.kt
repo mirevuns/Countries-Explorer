@@ -108,6 +108,34 @@ class CountriesRepositoryTest {
     }
 
     @Test
+    fun getAllCountries_returnsCacheOnFailure_butNotOnForceRefresh() = runBlocking {
+        repeat(5) {
+            server.enqueue(
+                MockResponse()
+                    .setBody(TestFixtures.singleCountryJsonArray(commonName = "CachedLand", cca2 = "CL"))
+                    .setResponseCode(200)
+                    .addHeader("Content-Type", "application/json")
+            )
+        }
+        val repo = repository()
+        val first = repo.getAllCountries()
+        assertEquals("CachedLand", first.first().displayName)
+
+        repeat(5) {
+            server.enqueue(MockResponse().setResponseCode(500))
+        }
+        val cached = repo.getAllCountries()
+        assertEquals("CachedLand", cached.first().displayName)
+
+        try {
+            repo.getAllCountries(forceRefresh = true)
+            fail("Expected region load failure on force refresh")
+        } catch (e: IOException) {
+            assertTrue(e.message!!.contains("регион"))
+        }
+    }
+
+    @Test
     fun searchCountries_apiError_withoutCache_throws() = runBlocking {
         server.enqueue(MockResponse().setResponseCode(500))
         try {
