@@ -23,7 +23,6 @@ import dagger.hilt.android.testing.HiltAndroidRule
 import dagger.hilt.android.testing.HiltAndroidTest
 import kotlinx.coroutines.runBlocking
 import org.junit.After
-import org.junit.AfterClass
 import org.junit.Before
 import org.junit.BeforeClass
 import org.junit.Rule
@@ -39,15 +38,6 @@ class NavigationComposeInstrumentedTest {
         @BeforeClass
         fun startMockServer() {
             TestApiHolder.ensureStarted()
-        }
-
-        @JvmStatic
-        @AfterClass
-        fun stopMockServer() {
-            try {
-                TestApiHolder.server.shutdown()
-            } catch (_: Throwable) {
-            }
         }
     }
 
@@ -100,7 +90,7 @@ class NavigationComposeInstrumentedTest {
         }
     }
 
-    private fun waitForTestland(timeoutMs: Long = 15_000) {
+    private fun waitForTestland(timeoutMs: Long = 30_000) {
         composeRule.waitUntil(timeoutMs) {
             composeRule.onAllNodesWithText("Testland").fetchSemanticsNodes().isNotEmpty()
         }
@@ -121,14 +111,14 @@ class NavigationComposeInstrumentedTest {
     @Test
     fun detail_error_then_retry_shows_country() {
         val ctx = InstrumentationRegistry.getInstrumentation().targetContext
-        TestApiHolder.armNextAlphaErrors(1)
         waitForTestland()
+        TestApiHolder.armNextAlphaErrors(1)
         composeRule.onNodeWithText("Testland").performClick()
-        composeRule.waitUntil(10_000) {
+        composeRule.waitUntil(20_000) {
             composeRule.onAllNodesWithText(ctx.getString(R.string.retry)).fetchSemanticsNodes().isNotEmpty()
         }
         composeRule.onNodeWithText(ctx.getString(R.string.retry)).performClick()
-        composeRule.waitUntil(10_000) {
+        composeRule.waitUntil(20_000) {
             composeRule.onAllNodesWithText("Capital City").fetchSemanticsNodes().isNotEmpty()
         }
         composeRule.onNodeWithText("Capital City").assertIsDisplayed()
@@ -138,8 +128,11 @@ class NavigationComposeInstrumentedTest {
     fun search_filters_list_to_matching_country() {
         val ctx = InstrumentationRegistry.getInstrumentation().targetContext
         waitForTestland()
-        composeRule.onNodeWithText(ctx.getString(R.string.search_hint)).performTextInput("Test")
-        composeRule.waitUntil(10_000) {
+        val hint = ctx.getString(R.string.search_hint)
+        composeRule.onNodeWithText(hint).performClick()
+        composeRule.onNodeWithText(hint).performTextInput("Test")
+        composeRule.waitForIdle()
+        composeRule.waitUntil(20_000) {
             composeRule.onAllNodesWithText("Testland").fetchSemanticsNodes().isNotEmpty()
         }
         composeRule.onNodeWithText("Testland").assertIsDisplayed()

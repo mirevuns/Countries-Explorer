@@ -69,6 +69,7 @@ android {
     testOptions {
         unitTests.all {
             // Keep test executor memory bounded on Windows.
+            it.maxParallelForks = 1
             it.maxHeapSize = "512m"
             it.jvmArgs(
                 "-Xmx512m",
@@ -131,8 +132,11 @@ dependencies {
     testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
     testImplementation("androidx.arch.core:core-testing:2.2.0")
 
-    androidTestImplementation("androidx.test.ext:junit:1.1.5")
-    androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    androidTestImplementation("androidx.test:runner:1.6.2")
+    androidTestImplementation("androidx.test:rules:1.6.1")
+    // 3.6.1+ fixes InputManager.getInstance crash on Android 15/16 (Espresso/Compose tests).
+    androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
     androidTestImplementation(platform("androidx.compose:compose-bom:2023.10.01"))
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     androidTestImplementation("androidx.room:room-testing:2.6.1")
