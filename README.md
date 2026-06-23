@@ -1,86 +1,67 @@
-# Countries Explorer (Android)
+# Countries Explorer
 
 **Автор:** Грибовский Илья Игоревич
 
-## Описание
+Android-приложение для просмотра стран через REST Countries API.
 
-**Countries Explorer** — Android-приложение для просмотра стран мира через **REST Countries API**. Экран избранного с **Room**: данные переживают перезапуск.
+**Ветка:** `feature/homework-6` (ДЗ 5-6). Финальный проект - `feature/final-project`, PR #4.
 
-- **Room:** таблица `favorites` (код, имя и сохранённые поля страны). Тап по сердцу — запись в БД, снятие избранного — удаление. Список избранного и фильтр «только избранное» читают Room через **Flow** (`getAllFavoritesFlow`, `getAllFavoriteCodes`) и обновляются без ручного опроса.
-- **Проверка:** добавить страну в избранное → закрыть приложение → снова открыть — избранное на месте.
+**Стек:** Kotlin, Compose, Coroutines, Retrofit, Room, DataStore, Hilt
 
-## Стек и архитектура
+## Запуск
 
-- Kotlin + Jetpack Compose + Coroutines
-- Retrofit + OkHttp + Gson
-- DI: Hilt
-- БД: Room (таблица favorites)
-- Архитектура: data (API, local) - Repository - ViewModel - UI
+JDK 17, Windows, PowerShell:
 
-## API (REST Countries)
+```text
+.\gradlew.bat assembleDebug
+.\gradlew.bat :app:testDebugUnitTest
+.\gradlew.bat :app:connectedDebugAndroidTest
+```
 
-- Base URL: https://api.restcountries.com/
-- List: GET /countries/v5/region/{region} (Africa, Americas, Asia, Europe, Oceania)
-- Search: GET /countries/v5/name?q={name}
-- Detail: GET /countries/v5/code?q={code}
-- API ключ требуется (Bearer)
+Для instrumented-тестов нужен эмулятор или телефон.
 
-### Ключ API
-REST Countries v5 требует API‑ключ (free tier).
+Ключ API v5 в `local.properties`:
 
-Как получить:
-- Зарегистрируйся на `https://restcountries.com/sign-up`
-- Добавь в `local.properties`:
+```text
+REST_COUNTRIES_API_KEY=YOUR_KEY
+```
 
-`REST_COUNTRIES_API_KEY=YOUR_KEY`
+Регистрация: https://restcountries.com/sign-up
 
-## Room
-
-Схема: **favorites** — `code` (PK), `name`, `country` (тип `Country` для отображения без лишних запросов к API). DAO: `Insert`/`DELETE`, `getAllFavoritesFlow()`, `getAllFavoriteCodes()`.
+---
 
 ## ДЗ 5
 
-## PR 
+Список и детали стран, поиск, избранное в Room.
 
-Pull request с рабочим кодом и описанием по требованиям курса.
+- Тап по сердцу сохраняет страну в БД, после перезапуска избранное на месте
+- Обработка загрузки, ошибок сети, пустого списка и поиска
+- Архитектура: API и Room - Repository - ViewModel - Compose UI
 
-## Сколько сделано юнит-тестов: 21
+**Тесты:** 21 юнит, 7 instrumented (`MainActivityComposeTest`, `NavigationComposeInstrumentedTest`, `FavoritesRoomInstrumentedTest` и др.)
 
-(`app/src/test`), интеграционных 7 (`app/src/androidTest`). В `test/` - JVM, ViewModel, репозиторий + MockWebServer, фейковый DAO, без Hilt/Compose/Navigation. В `androidTest/` - Hilt, Compose, навигация, Room in-memory, мок-сервер через тестовый модуль.
-
-## Юнит (21)
-
-`CountriesListViewModelTest` (7), `CountryDetailViewModelTest` (3), `FavoritesSharedViewModelTest` (2), `CountriesRepositoryTest` (6), `FavoriteEntityTest` (1), `CountryCodeHelperTest` (2).
-
-## Интеграция (7) 
-
-`MainActivityComposeTest` (2), `NavigationComposeInstrumentedTest` (3), `FavoritesRoomInstrumentedTest` (2).
-
-## Сценарии 
-
-Загрузка списка и деталей; ошибка сети - повтор - успех; пустой список и пустой поиск - `Empty`; debounce поиска; фильтр избранного через `combine` без лишнего `getAllCountries`; избранное и Room (дубликат по коду, Flow после insert); репозиторий + MockWebServer; UI: список - детали, ошибка детали - «Повторить», подсказка поиска (`mutableStateOf`).
-
-## Flow в тестах 
-
-для `CountriesListViewModel.uiState` проверяются цепочки `Loading`/`Success`/`Empty`/`Error` и смена данных при фильтрах; для `favoriteEntries` - Turbine (`[]` - список с записью); для `favorites` и Room `Flow` - обновление после insert/toggle. Где `SharingStarted.WhileSubscribed`, в тестах держится активный коллектор.
-
-## Запуск 
-
-`gradlew.bat :app:testDebugUnitTest`, `gradlew.bat :app:connectedDebugAndroidTest` (эмулятор или устройство).
+---
 
 ## ДЗ 6
 
-В списке стран: `combine`, `merge`, `debounce`, `distinctUntilChanged`, `flatMapLatest`, `MutableSharedFlow`, `stateIn` + `WhileSubscribed`; настройки списка - DataStore (`ListPreferencesRepository`); избранное - Room. Локальный UI на экране списка: **`mutableStateOf`** (подсказка по поиску), остальное - `StateFlow` + `collectAsState()`.
+Flow и DataStore поверх ДЗ 5.
 
-## Сборка (JDK 17)
+- В списке: `combine`, `merge`, `debounce`, `flatMapLatest`, `stateIn`, refresh через `MutableSharedFlow`
+- Настройки списка (сортировка) в DataStore
+- Избранное по-прежнему в Room, обновляется через Flow
+- Локальный UI: подсказка поиска на `mutableStateOf`, остальное - `StateFlow`
 
-Windows: `gradlew.bat assembleDebug`
+**Тесты:** 22 юнит, 6 instrumented (refresh без сети, FilterChips)
 
-## Скриншоты 
+**PR:** #3
+
+---
+
+## Скриншоты
 
 ![Загрузка](screenshots/loading.png)
-![Ошибка загрузки](screenshots/error.png)
-![Список стран](screenshots/list.png)
-![Ничего не найдено](screenshots/empty.png)
-![Детали страны](screenshots/detail.png)
+![Ошибка](screenshots/error.png)
+![Список](screenshots/list.png)
+![Пусто](screenshots/empty.png)
+![Детали](screenshots/detail.png)
 ![Избранное](screenshots/favorites.png)
