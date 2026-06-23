@@ -1,0 +1,366 @@
+package com.countriesexplorer.ui.screen
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.CollectionsBookmark
+import androidx.compose.material3.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import com.countriesexplorer.R
+import com.countriesexplorer.data.local.CollectionEntity
+import com.countriesexplorer.data.model.Country
+import com.countriesexplorer.ui.state.UiState
+import com.countriesexplorer.util.CountryCodeHelper
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CountryDetailScreen(
+    countryCode: String,
+    uiState: UiState<Country>,
+    noteDraft: String,
+    collections: List<CollectionEntity>,
+    collectionMessage: String?,
+    onNoteChanged: (String) -> Unit,
+    onSaveNote: () -> Unit,
+    onDeleteNote: () -> Unit,
+    onAddToCollection: (Long) -> Unit,
+    onClearCollectionMessage: () -> Unit,
+    onNavigateBack: () -> Unit,
+    onRetry: () -> Unit,
+    isFavorite: Boolean,
+    onFavoriteToggle: (String, Country?) -> Unit
+) {
+    var showCollectionDialog by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val addedToCollectionMessage = stringResource(R.string.added_to_collection)
+
+    LaunchedEffect(collectionMessage) {
+        if (collectionMessage != null) {
+            snackbarHostState.showSnackbar(message = addedToCollectionMessage)
+            onClearCollectionMessage()
+        }
+    }
+
+    Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        topBar = {
+            TopAppBar(
+                title = { Text(stringResource(R.string.country_detail_title)) },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = stringResource(R.string.back)
+                        )
+                    }
+                },
+                actions = {
+                    IconButton(
+                        onClick = {
+                            if (isFavorite) {
+                                onFavoriteToggle(countryCode, null)
+                            } else {
+                                val c = (uiState as? UiState.Success)?.data
+                                if (c != null) onFavoriteToggle(countryCode, c)
+                            }
+                        },
+                        enabled = isFavorite || uiState is UiState.Success
+                    ) {
+                        Icon(
+                            imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                            contentDescription = stringResource(
+                                if (isFavorite) R.string.remove_from_favorites else R.string.add_to_favorites
+                            ),
+                            tint = if (isFavorite) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+            )
+        }
+    ) { padding ->
+        when (val state = uiState) {
+            is UiState.Loading -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            }
+            is UiState.Error -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center,
+                        modifier = Modifier.padding(horizontal = 24.dp)
+                    ) {
+                        Text(
+                            text = if (state.retryable) {
+                                stringResource(R.string.error_occurred)
+                            } else {
+                                stringResource(R.string.country_not_found)
+                            },
+                            style = MaterialTheme.typography.titleMedium,
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = state.message,
+                            textAlign = TextAlign.Center
+                        )
+                        if (state.retryable) {
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Button(onClick = onRetry) {
+                                Text(stringResource(R.string.retry))
+                            }
+                        }
+                    }
+                }
+            }
+            is UiState.Empty -> {
+                Box(
+                    modifier = Modifier.fillMaxSize().padding(padding),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(stringResource(R.string.no_countries_found))
+                }
+            }
+            is UiState.Success -> {
+                val country = state.data
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding)
+                        .verticalScroll(rememberScrollState())
+                        .padding(16.dp)
+                ) {
+                    if (state.isOffline) {
+                        Text(
+                            text = stringResource(R.string.offline_detail_banner),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                    } else if (state.syncBlocked) {
+                        Text(
+                            text = stringResource(R.string.sync_blocked_banner),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                    } else if (state.isStale) {
+                        Text(
+                            text = stringResource(R.string.stale_cache_banner),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(CountryCodeHelper.getFlagUrl(country))
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = country.displayName,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp)
+                    )
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    Text(
+                        text = country.displayName,
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    DetailRow(
+                        label = stringResource(R.string.capital),
+                        value = country.capital?.joinToString() ?: stringResource(R.string.no_data)
+                    )
+
+                    DetailRow(
+                        label = stringResource(R.string.population),
+                        value = String.format("%,d", country.population)
+                    )
+
+                    country.area?.let {
+                        DetailRow(
+                            label = stringResource(R.string.area),
+                            value = stringResource(R.string.area_sq_km, it)
+                        )
+                    }
+
+                    DetailRow(
+                        label = stringResource(R.string.region),
+                        value = country.region
+                    )
+
+                    country.subregion?.let {
+                        DetailRow(
+                            label = stringResource(R.string.subregion),
+                            value = it
+                        )
+                    }
+
+                    country.languages?.let { languages ->
+                        DetailRow(
+                            label = stringResource(R.string.languages),
+                            value = languages.values.joinToString()
+                        )
+                    }
+
+                    country.currencies?.let { currencies ->
+                        DetailRow(
+                            label = stringResource(R.string.currencies),
+                            value = currencies.values.joinToString {
+                                "${it.name} (${it.symbol ?: ""})"
+                            }
+                        )
+                    }
+
+                    country.timezones?.let { timezones ->
+                        DetailRow(
+                            label = stringResource(R.string.timezones),
+                            value = timezones.joinToString()
+                        )
+                    }
+
+                    country.borders?.let { borders ->
+                        if (borders.isNotEmpty()) {
+                            DetailRow(
+                                label = stringResource(R.string.borders),
+                                value = borders.joinToString()
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+                    OutlinedButton(
+                        onClick = { showCollectionDialog = true },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CollectionsBookmark,
+                            contentDescription = null,
+                            modifier = Modifier.padding(end = 8.dp)
+                        )
+                        Text(stringResource(R.string.add_to_collection))
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = stringResource(R.string.country_note),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    OutlinedTextField(
+                        value = noteDraft,
+                        onValueChange = onNoteChanged,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 8.dp),
+                        placeholder = { Text(stringResource(R.string.country_note_hint)) },
+                        minLines = 3
+                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Button(onClick = onSaveNote) {
+                            Text(stringResource(R.string.save_note))
+                        }
+                        if (noteDraft.isNotBlank()) {
+                            TextButton(onClick = onDeleteNote) {
+                                Text(stringResource(R.string.delete_note))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (showCollectionDialog) {
+        AlertDialog(
+            onDismissRequest = { showCollectionDialog = false },
+            title = { Text(stringResource(R.string.add_to_collection)) },
+            text = {
+                if (collections.isEmpty()) {
+                    Text(stringResource(R.string.no_collections))
+                } else {
+                    Column {
+                        collections.forEach { collection ->
+                            TextButton(
+                                onClick = {
+                                    onAddToCollection(collection.id)
+                                    showCollectionDialog = false
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(collection.name)
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showCollectionDialog = false }) {
+                    Text(stringResource(R.string.close))
+                }
+            }
+        )
+    }
+}
+
+@Composable
+fun DetailRow(label: String, value: String) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp)
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyLarge,
+            fontWeight = FontWeight.Medium
+        )
+    }
+}
