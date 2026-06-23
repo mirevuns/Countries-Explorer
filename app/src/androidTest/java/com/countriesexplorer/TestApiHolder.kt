@@ -15,6 +15,27 @@ object TestApiHolder {
 
     private val alphaErrorsRemaining = AtomicInteger(0)
 
+    private fun installDispatcher() {
+        server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                val path = request.path ?: return notFound()
+                if (path.contains("/code") && alphaErrorsRemaining.get() > 0) {
+                    alphaErrorsRemaining.decrementAndGet()
+                    return MockResponse()
+                        .setResponseCode(500)
+                        .setBody("{}")
+                        .addHeader("Content-Type", "application/json")
+                }
+                return when {
+                    path.contains("/region/") -> ok(TestResponses.regionCountriesJsonArray())
+                    path.contains("/name") -> ok(TestResponses.searchCountriesJsonArray())
+                    path.contains("/code") -> ok(TestResponses.singleCountryJsonResponse())
+                    else -> notFound()
+                }
+            }
+        }
+    }
+
     fun armNextAlphaErrors(count: Int) {
         alphaErrorsRemaining.set(count)
     }
@@ -25,28 +46,23 @@ object TestApiHolder {
 
     fun ensureStarted() {
         synchronized(this) {
-            if (!started) {
-                server.dispatcher = object : Dispatcher() {
-                    override fun dispatch(request: RecordedRequest): MockResponse {
-                        val path = request.path ?: return notFound()
-                        if (path.contains("/code") && alphaErrorsRemaining.get() > 0) {
-                            alphaErrorsRemaining.decrementAndGet()
-                            return MockResponse()
-                                .setResponseCode(500)
-                                .setBody("{}")
-                                .addHeader("Content-Type", "application/json")
-                        }
-                        return when {
-                            path.contains("/region/") -> ok(TestResponses.regionCountriesJsonArray())
-                            path.contains("/name") -> ok(TestResponses.searchCountriesJsonArray())
-                            path.contains("/code") -> ok(TestResponses.singleCountryJsonResponse())
-                            else -> notFound()
-                        }
-                    }
-                }
+            if (started) return
+            installDispatcher()
+            if (server.port <= 0) {
                 server.start()
-                started = true
             }
+            started = true
+        }
+    }
+
+    fun shutdown() {
+        synchronized(this) {
+            if (!started) return
+            try {
+                server.shutdown()
+            } catch (_: Throwable) {
+            }
+            started = false
         }
     }
 

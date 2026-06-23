@@ -19,7 +19,6 @@ import com.countriesexplorer.ui.viewmodel.FavoritesSharedViewModel
 import dagger.hilt.android.testing.HiltAndroidRule
 import dagger.hilt.android.testing.HiltAndroidTest
 import org.junit.After
-import org.junit.AfterClass
 import org.junit.Before
 import org.junit.BeforeClass
 import org.junit.Rule
@@ -35,15 +34,6 @@ class MainActivityComposeTest {
         @BeforeClass
         fun startMockServer() {
             TestApiHolder.ensureStarted()
-        }
-
-        @JvmStatic
-        @AfterClass
-        fun stopMockServer() {
-            try {
-                TestApiHolder.server.shutdown()
-            } catch (_: Throwable) {
-            }
         }
     }
 
